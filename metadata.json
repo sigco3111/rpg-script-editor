@@ -1,0 +1,6 @@
+{
+  "name": "RPG Script Editor",
+  "description": "A web application to help create and manage RPG game scripts, including world settings, stages, scenes, and characters, with AI-assisted content generation capabilities.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
