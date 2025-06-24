@@ -1,7 +1,7 @@
 
 import { WorldSettings, Project } from './types';
 
-export const GEMINI_MODEL_TEXT = 'gemini-2.5-flash-preview-04-17';
+export const GEMINI_MODEL_TEXT = 'gemini-2.5-flash';
 
 export const USER_API_KEY_LOCAL_STORAGE_KEY = 'userDefinedGeminiApiKey';
 export const PLACEHOLDER_API_KEY = "GEMINI_API_키를_여기에_입력하세요";
