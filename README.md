@@ -3,7 +3,11 @@
 
 RPG 게임의 세계관, 스테이지, 장면, 캐릭터를 만들고 관리하는 데 도움이 되는 웹 애플리케이션입니다. AI(Google Gemini API)를 활용하여 콘텐츠 생성을 지원합니다.
 
-실행 주소 : https://dev-canvas-pi.vercel.app/
+라이브 데모 : https://sigco3111.github.io/rpg-script-editor/
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-222222?style=for-the-badge&logo=githubpages)](https://sigco3111.github.io/rpg-script-editor/)
+
+> **참고**: AI 콘텐츠 생성은 Google Gemini API 키가 필요합니다 (`process.env.GEMINI_API_KEY`). 키가 없으면 AI 마법사 기능은 비활성화되며, 수동 편집/로컬스토리지 저장/JSON 내보내기는 정상 작동합니다.
 
 ## ✨ 주요 기능
 
@@ -31,7 +35,43 @@ RPG 게임의 세계관, 스테이지, 장면, 캐릭터를 만들고 관리하�
 *   **상태 관리**: React Hooks (useState, useCallback, useEffect)
 *   **모듈 번들러/컴파일러**: (브라우저 내 ES 모듈 로딩 및 esm.sh를 통한 CDN 활용)
 
+## 🚀 배포 (Deployment)
+
+이 저장소는 GitHub Actions 또는 수동 gh-pages 브랜치 푸시로 배포됩니다. `vite.config.ts`에 `base: '/rpg-script-editor/'`가 박혀 있어 빌드 결과가 gh-pages 서브경로에서 정상 작동합니다.
+
+```bash
+npm install
+npm run build
+npx gh-pages -d dist
+```
+
+---
+
 ## 🚀 시작하기
+
+### GitHub Pages 빌드 (정식)
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # vite build → dist/
+npm run preview      # serve dist/
+```
+
+### API 키 설정 (중요 — AI 기능용)
+
+AI 기능을 사용하려면 Google Gemini API 키가 필요합니다.
+
+*   **권장 방법**: 빌드 환경에서 `GEMINI_API_KEY` 환경 변수를 설정합니다.
+    ```bash
+    GEMINI_API_KEY="YOUR_GEMINI_API_KEY" npm run build
+    ```
+    이 키는 `vite.config.ts`의 `define`을 통해 빌드 결과에 인라인됩니다.
+*   **Pages 배포 시 주의**: 빌드 시점에 키가 없으면 `process.env.GEMINI_API_KEY`가 `undefined`로 박혀 AI 기능이 비활성화됩니다. 수동 편집/로컬스토리지 저장/JSON 내보내기는 정상 작동합니다.
+
+### 정적 서버로 직접 실행 (개발/테스트용)
+
+이 프로젝트는 esm.sh CDN 의존성으로 빌드 없이도 작동합니다. 로컬에서 빠르게 실행하려면:
 
 1.  애플리케이션 파일을 웹 서버에 호스팅하거나 로컬에서 `index.html` 파일을 직접 엽니다.
 2.  **API 키 설정 (매우 중요)**:

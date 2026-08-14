@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RPG Script Editor</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/rpg-script-editor/favicon.svg" />
+  <link rel="icon" type="image/png" href="/rpg-script-editor/favicon.png" />
+  <link rel="shortcut icon" href="/rpg-script-editor/favicon.ico" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* For Modal Animation */
@@ -34,10 +34,2561 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-900">
   <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+  <script type="module">
+// index.tsx
+import React9 from "react";
+import ReactDOM from "react-dom/client";
+
+// App.tsx
+import { useState as useState8, useCallback as useCallback2, useEffect as useEffect5, useRef } from "react";
+
+// types.ts
+var CharacterType = /* @__PURE__ */ ((CharacterType3) => {
+  CharacterType3["NPC"] = "NPC";
+  CharacterType3["PLAYER_CHARACTER"] = "\uD50C\uB808\uC774\uC5B4 \uCE90\uB9AD\uD130";
+  CharacterType3["REGULAR_MONSTER"] = "\uC77C\uBC18 \uBAAC\uC2A4\uD130";
+  CharacterType3["BOSS_MONSTER"] = "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130";
+  return CharacterType3;
+})(CharacterType || {});
+var SceneType = /* @__PURE__ */ ((SceneType2) => {
+  SceneType2["NARRATION"] = "\uB098\uB808\uC774\uC158";
+  SceneType2["DIALOGUE"] = "\uB300\uD654";
+  SceneType2["CHOICE"] = "\uC120\uD0DD";
+  SceneType2["REGULAR_COMBAT"] = "\uC77C\uBC18 \uC804\uD22C";
+  SceneType2["BOSS_COMBAT"] = "\uBCF4\uC2A4 \uC804\uD22C";
+  SceneType2["ITEM_ACQUISITION"] = "\uC544\uC774\uD15C \uD68D\uB4DD";
+  SceneType2["LOCATION_CHANGE"] = "\uC7A5\uC18C \uBCC0\uACBD";
+  SceneType2["TOWN"] = "\uB9C8\uC744";
+  return SceneType2;
+})(SceneType || {});
+
+// constants.ts
+var GEMINI_MODEL_TEXT = "gemini-2.5-flash";
+var USER_API_KEY_LOCAL_STORAGE_KEY = "userDefinedGeminiApiKey";
+var PLACEHOLDER_API_KEY = "GEMINI_API_\uD0A4\uB97C_\uC5EC\uAE30\uC5D0_\uC785\uB825\uD558\uC138\uC694";
+var getEffectiveApiKey = () => {
+  const envApiKey = process.env.API_KEY;
+  if (envApiKey && envApiKey !== PLACEHOLDER_API_KEY && envApiKey.trim() !== "") {
+    return envApiKey;
+  }
+  const storedKey = localStorage.getItem(USER_API_KEY_LOCAL_STORAGE_KEY);
+  if (storedKey && storedKey.trim() !== "") {
+    return storedKey;
+  }
+  if (envApiKey === PLACEHOLDER_API_KEY) {
+    return PLACEHOLDER_API_KEY;
+  }
+  return PLACEHOLDER_API_KEY;
+};
+var saveUserApiKey = (key) => {
+  if (key && key.trim() !== "") {
+    localStorage.setItem(USER_API_KEY_LOCAL_STORAGE_KEY, key);
+  } else {
+    localStorage.removeItem(USER_API_KEY_LOCAL_STORAGE_KEY);
+  }
+};
+var isApiKeyEffectivelyConfigured = () => {
+  const effectiveKey = getEffectiveApiKey();
+  return effectiveKey !== PLACEHOLDER_API_KEY && effectiveKey.trim() !== "";
+};
+var initialWorldSettings = {
+  title: "",
+  description: "",
+  mainConflict: "",
+  keyLocations: ""
+};
+var initialProject = {
+  worldSettings: null,
+  stages: []
+};
+
+// components/WorldSettingsPanel.tsx
+import { useState, useEffect } from "react";
+
+// components/shared/Button.tsx
+import { jsx, jsxs } from "react/jsx-runtime";
+var Button = ({
+  children,
+  variant = "primary",
+  size = "md",
+  leftIcon,
+  rightIcon,
+  className = "",
+  loading,
+  disabled,
+  ...props
+}) => {
+  const baseStyles = "font-semibold rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 flex items-center justify-center transition-colors duration-150 ease-in-out";
+  const variantStyles = {
+    primary: "bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500",
+    secondary: "bg-gray-600 hover:bg-gray-700 text-gray-100 focus:ring-gray-500",
+    danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500",
+    success: "bg-green-600 hover:bg-green-700 text-white focus:ring-green-500",
+    ghost: "bg-transparent hover:bg-gray-700 text-gray-300 focus:ring-gray-500 border border-gray-600",
+    info: "bg-sky-600 hover:bg-sky-700 text-white focus:ring-sky-500"
+  };
+  const sizeStyles = {
+    sm: "py-1.5 px-3 text-sm",
+    md: "py-2 px-4 text-base",
+    lg: "py-2.5 px-6 text-lg"
+  };
+  const spinnerColorClass = () => {
+    switch (variant) {
+      case "primary":
+      case "danger":
+      case "success":
+      case "info":
+        return "text-white";
+      case "secondary":
+      case "ghost":
+        return "text-purple-400";
+      default:
+        return "text-purple-400";
+    }
+  };
+  const spinner = /* @__PURE__ */ jsxs("svg", { className: `animate-spin h-5 w-5 ${spinnerColorClass()}`, xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", children: [
+    /* @__PURE__ */ jsx("circle", { className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4" }),
+    /* @__PURE__ */ jsx("path", { className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" })
+  ] });
+  return /* @__PURE__ */ jsxs(
+    "button",
+    {
+      className: `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className} ${loading ? "cursor-not-allowed opacity-75" : ""}`,
+      disabled: loading || disabled,
+      ...props,
+      children: [
+        loading && /* @__PURE__ */ jsx("span", { className: "mr-2", children: spinner }),
+        !loading && leftIcon && /* @__PURE__ */ jsx("span", { className: "mr-2 h-5 w-5", children: leftIcon }),
+        children,
+        rightIcon && /* @__PURE__ */ jsx("span", { className: "ml-2 h-5 w-5", children: rightIcon })
+      ]
+    }
+  );
+};
+var Button_default = Button;
+
+// components/shared/Input.tsx
+import { jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
+var Input = ({ label, id, wrapperClassName = "", className = "", ...props }) => {
+  return /* @__PURE__ */ jsxs2("div", { className: wrapperClassName, children: [
+    label && /* @__PURE__ */ jsx2("label", { htmlFor: id, className: "block text-sm font-medium text-gray-300 mb-1", children: label }),
+    /* @__PURE__ */ jsx2(
+      "input",
+      {
+        id,
+        className: `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-colors ${className}`,
+        ...props
+      }
+    )
+  ] });
+};
+var Input_default = Input;
+
+// components/shared/TextArea.tsx
+import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+var TextArea = ({ label, id, wrapperClassName = "", className = "", ...props }) => {
+  return /* @__PURE__ */ jsxs3("div", { className: wrapperClassName, children: [
+    label && /* @__PURE__ */ jsx3("label", { htmlFor: id, className: "block text-sm font-medium text-gray-300 mb-1", children: label }),
+    /* @__PURE__ */ jsx3(
+      "textarea",
+      {
+        id,
+        className: `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-colors ${className}`,
+        rows: 4,
+        ...props
+      }
+    )
+  ] });
+};
+var TextArea_default = TextArea;
+
+// components/shared/icons/Icons.tsx
+import { jsx as jsx4 } from "react/jsx-runtime";
+var PlusIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M12 4v16m8-8H4" }) });
+var EditIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" }) });
+var TrashIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" }) });
+var AISparklesIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 12L17 14.25l-1.25-2.25L13.5 11l2.25-1.25L17 7.5l1.25 2.25L20.5 11l-2.25 1.25z" }) });
+var SaveIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" }) });
+var FolderOpenIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M13.5 10.5V6.75a1.5 1.5 0 00-1.5-1.5h-6a1.5 1.5 0 00-1.5 1.5v10.5A1.5 1.5 0 006 18.75h10.5a1.5 1.5 0 001.5-1.5V10.5m-13.5 0L12 3m0 0l4.5 7.5M12 3v7.5" }) });
+var ChevronDownIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M19 9l-7 7-7-7" }) });
+var ChevronRightIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M9 5l7 7-7 7" }) });
+var LinkIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" }) });
+var UsersIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.247-3.372c-.546-.115-1.093-.23-1.644-.346l.206-3.518A4.502 4.502 0 0012.723 6H11.28a4.5 4.5 0 00-4.435 3.666l.207 3.518c-.55.116-1.097.23-1.644.346m0 0a9.093 9.093 0 00-3.742.479 3 3 0 004.682 2.72M12 18a9.094 9.094 0 003.741-.479m-7.483 0a9.093 9.093 0 013.742-.479m4.535 4.509a2.25 2.25 0 01-2.25 2.25H9.75a2.25 2.25 0 01-2.25-2.25M12 12.75a3 3 0 110-6 3 3 0 010 6z" }) });
+var XIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M6 18L18 6M6 6l12 12" }) });
+var DownloadIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" }) });
+var UploadIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" }) });
+var PlayIcon = (props) => /* @__PURE__ */ jsx4("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props, children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" }) });
+
+// components/WorldSettingsPanel.tsx
+import { Fragment, jsx as jsx5, jsxs as jsxs4 } from "react/jsx-runtime";
+var WorldSettingsPanel = ({ worldSettings, onSetWorldSettings, onSelect, isSelected, setIsLoading, setError }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [localSettings, setLocalSettings] = useState(worldSettings);
+  useEffect(() => {
+    setLocalSettings(worldSettings);
+  }, [worldSettings]);
+  const handleInputChange = (e) => {
+    setLocalSettings({ ...localSettings, [e.target.name]: e.target.value });
+  };
+  const handleSave = () => {
+    onSetWorldSettings(localSettings);
+  };
+  return /* @__PURE__ */ jsxs4("div", { className: "mb-6 p-4 bg-gray-700 rounded-lg shadow", children: [
+    /* @__PURE__ */ jsxs4("div", { className: "flex justify-between items-center mb-3 cursor-pointer", onClick: () => setIsCollapsed(!isCollapsed), children: [
+      /* @__PURE__ */ jsx5("h2", { className: "text-xl font-semibold text-purple-400", children: "\uC138\uACC4\uAD00 \uC124\uC815" }),
+      isCollapsed ? /* @__PURE__ */ jsx5(ChevronRightIcon, { className: "w-6 h-6" }) : /* @__PURE__ */ jsx5(ChevronDownIcon, { className: "w-6 h-6" })
+    ] }),
+    !isCollapsed && /* @__PURE__ */ jsx5(Fragment, { children: isSelected ? /* @__PURE__ */ jsxs4("div", { className: "space-y-4", children: [
+      /* @__PURE__ */ jsx5(
+        Input_default,
+        {
+          label: "\uC81C\uBAA9",
+          name: "title",
+          value: localSettings.title,
+          onChange: handleInputChange,
+          placeholder: "\uC608: \uBD80\uC11C\uC9C4 \uC5D8\uB3C4\uB9AC\uC544 \uC655\uAD6D"
+        }
+      ),
+      /* @__PURE__ */ jsx5(
+        TextArea_default,
+        {
+          label: "\uC124\uBA85",
+          name: "description",
+          value: localSettings.description,
+          onChange: handleInputChange,
+          placeholder: "\uC138\uACC4\uAD00\uC758 \uD14C\uB9C8, \uBD84\uC704\uAE30, \uC8FC\uC694 \uD2B9\uC9D5\uC5D0 \uB300\uD55C \uAC04\uB7B5\uD55C \uAC1C\uC694\uC785\uB2C8\uB2E4.",
+          rows: 3
+        }
+      ),
+      /* @__PURE__ */ jsx5(
+        TextArea_default,
+        {
+          label: "\uC8FC\uC694 \uAC08\uB4F1",
+          name: "mainConflict",
+          value: localSettings.mainConflict,
+          onChange: handleInputChange,
+          placeholder: "\uC608: \uB9CC\uC5F0\uD558\uB294 \uD0C0\uB77D\uC774 \uB545\uC744 \uC0BC\uD0A4\uB824 \uD569\uB2C8\uB2E4.",
+          rows: 2
+        }
+      ),
+      /* @__PURE__ */ jsx5(
+        TextArea_default,
+        {
+          label: "\uC8FC\uC694 \uC7A5\uC18C (\uC27C\uD45C\uB85C \uAD6C\uBD84)",
+          name: "keyLocations",
+          value: localSettings.keyLocations,
+          onChange: handleInputChange,
+          placeholder: "\uC608: \uC218\uB3C4 \uC544\uD154\uB860, \uAE08\uB2E8\uC758 \uC232, \uC218\uC815 \uB3D9\uAD74",
+          rows: 2
+        }
+      ),
+      /* @__PURE__ */ jsx5(Button_default, { onClick: handleSave, variant: "success", leftIcon: /* @__PURE__ */ jsx5(SaveIcon, { className: "w-5 h-5" }), children: "\uC138\uACC4\uAD00 \uC124\uC815 \uC800\uC7A5" })
+    ] }) : /* @__PURE__ */ jsxs4("div", { className: "space-y-2 text-sm text-gray-300", children: [
+      /* @__PURE__ */ jsxs4("p", { children: [
+        /* @__PURE__ */ jsx5("strong", { children: "\uC81C\uBAA9:" }),
+        " ",
+        worldSettings.title || "\uC124\uC815\uB418\uC9C0 \uC54A\uC74C"
+      ] }),
+      /* @__PURE__ */ jsxs4("p", { children: [
+        /* @__PURE__ */ jsx5("strong", { children: "\uC124\uBA85:" }),
+        " ",
+        worldSettings.description || "\uC124\uC815\uB418\uC9C0 \uC54A\uC74C"
+      ] }),
+      /* @__PURE__ */ jsx5(Button_default, { onClick: onSelect, variant: "secondary", leftIcon: /* @__PURE__ */ jsx5(EditIcon, { className: "w-4 h-4" }), size: "sm", children: "\uC138\uACC4\uAD00 \uC124\uC815 \uD3B8\uC9D1" })
+    ] }) })
+  ] });
+};
+var WorldSettingsPanel_default = WorldSettingsPanel;
+
+// components/StageListPanel.tsx
+import { useState as useState3 } from "react";
+
+// services/geminiService.ts
+import { GoogleGenAI } from "@google/genai";
+
+// utils/idGenerator.ts
+var generateId = () => {
+  return Math.random().toString(36).substr(2, 9);
+};
+
+// services/geminiService.ts
+var getAI = () => {
+  const effectiveKey = getEffectiveApiKey();
+  if (effectiveKey === PLACEHOLDER_API_KEY || !effectiveKey) {
+    throw new Error("Gemini API \uD0A4\uAC00 \uAD6C\uC131\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC571 \uC0C1\uB2E8\uC5D0 API \uD0A4\uB97C \uC785\uB825\uD558\uAC70\uB098, constants.ts \uB610\uB294 \uD658\uACBD \uBCC0\uC218\uB85C \uC124\uC815\uD558\uC138\uC694.");
+  }
+  return new GoogleGenAI({ apiKey: effectiveKey });
+};
+var parseJsonFromResponse = (responseText) => {
+  let jsonStr = responseText.trim();
+  const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+  const match = jsonStr.match(fenceRegex);
+  if (match && match[2]) {
+    jsonStr = match[2].trim();
+  }
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error("Failed to parse JSON response:", e, "Raw text:", responseText);
+    throw new Error(`AI\uC758 JSON \uC751\uB2F5\uC774 \uC798\uBABB\uB418\uC5C8\uC2B5\uB2C8\uB2E4: ${jsonStr.substring(0, 100)}...`);
+  }
+};
+var generateStagesWithAI = async (worldSettings) => {
+  const ai = getAI();
+  const prompt = `
+    \uB2E4\uC74C RPG \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uAE30\uBC18\uC73C\uB85C:
+    \uC81C\uBAA9: ${worldSettings.title}
+    \uC124\uBA85: ${worldSettings.description}
+    \uC8FC\uC694 \uAC08\uB4F1: ${worldSettings.mainConflict}
+    \uC8FC\uC694 \uC7A5\uC18C: ${worldSettings.keyLocations}
+
+    \uC774 RPG\uC5D0 \uB300\uD55C 3\uAC1C\uC758 \uB3C5\uD2B9\uD55C \uC2A4\uD14C\uC774\uC9C0\uB97C \uC81C\uC548\uD574\uC8FC\uC138\uC694. \uAC01 \uC2A4\uD14C\uC774\uC9C0\uC5D0 \uB300\uD574 "title"(\uCD5C\uB300 10\uB2E8\uC5B4)\uACFC "settingDescription"(1-2 \uBB38\uC7A5)\uC744 \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+    \uBAA8\uB4E0 \uC751\uB2F5\uC740 \uD55C\uAD6D\uC5B4\uB85C \uC791\uC131\uD574\uC8FC\uC138\uC694.
+    \uC751\uB2F5\uC740 \uAC01 \uAC1D\uCCB4\uAC00 "title"\uACFC "settingDescription" \uC18D\uC131\uC744 \uAC00\uC9C0\uB294 JSON \uAC1D\uCCB4 \uBC30\uC5F4\uB85C \uBC18\uD658\uD574\uC8FC\uC138\uC694.
+    \uC608\uC2DC: [{"title": "\uC18D\uC0AD\uC774\uB294 \uC232", "settingDescription": "\uC783\uC5B4\uBC84\uB9B0 \uC720\uBB3C\uC744 \uD488\uACE0 \uC788\uB2E4\uACE0 \uC804\uD574\uC9C0\uB294 \uACE0\uB300 \uC232\uC785\uB2C8\uB2E4."}]
+  `;
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL_TEXT,
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    const suggestions = parseJsonFromResponse(response.text);
+    if (!suggestions || !Array.isArray(suggestions) || suggestions.some((s) => typeof s.title !== "string" || typeof s.settingDescription !== "string")) {
+      throw new Error("\uC2A4\uD14C\uC774\uC9C0\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC774 \uC608\uC0C1 \uD615\uC2DD\uACFC \uB2E4\uB985\uB2C8\uB2E4.");
+    }
+    return suggestions;
+  } catch (error) {
+    console.error("AI\uB85C \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131 \uC911 \uC624\uB958 \uBC1C\uC0DD:", error);
+    throw error;
+  }
+};
+var generateSceneDetailsWithAI = async (worldSettings, stage, sceneType, context) => {
+  const ai = getAI();
+  let prompt = `
+    RPG \uC138\uACC4\uAD00: ${worldSettings.description}
+    \uD604\uC7AC \uC2A4\uD14C\uC774\uC9C0: "${stage.title}" - ${stage.settingDescription}
+    \uC2A4\uD14C\uC774\uC9C0 \uB0B4 \uAE30\uC874 \uCE90\uB9AD\uD130: ${stage.characters.map((c) => `${c.name} (${c.type})`).join(", ") || "\uC544\uC9C1 \uC5C6\uC74C"}
+    ${context ? `\uCEE8\uD14D\uC2A4\uD2B8/\uC0AC\uC6A9\uC790 \uC694\uCCAD: ${context}
+` : ""}
+    \uBAA8\uB4E0 \uC751\uB2F5(\uC81C\uBAA9, \uB0B4\uC6A9, \uC120\uD0DD\uC9C0 \uD14D\uC2A4\uD2B8, \uC544\uC774\uD15C \uC774\uB984, \uC7A5\uC18C \uC774\uB984, \uC801 \uC774\uB984, \uBCF4\uC0C1 \uC124\uBA85 \uB4F1)\uC740 \uBC18\uB4DC\uC2DC \uD55C\uAD6D\uC5B4\uB85C \uC791\uC131\uD574\uC8FC\uC138\uC694.
+  `;
+  switch (sceneType) {
+    case "\uB098\uB808\uC774\uC158" /* NARRATION */:
+      prompt += `\uB098\uB808\uC774\uC158 \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4)\uACFC "content"(1-3 \uBB38\uC7A5\uC758 \uB098\uB808\uC774\uC158)\uB97C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uB098\uB808\uC774\uC158 \uB0B4\uC6A9..."}`;
+      break;
+    case "\uB300\uD654" /* DIALOGUE */:
+      prompt += `NPC\uAC00 \uB9D0\uD558\uB294 \uB300\uD654 \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4.
+                 "title"(\uCD5C\uB300 5\uB2E8\uC5B4), "content"(NPC\uC758 \uB300\uC0AC, 1-2 \uBB38\uC7A5), \uADF8\uB9AC\uACE0 \uC2A4\uD14C\uC774\uC9C0\uC758 \uAE30\uC874 NPC \uC911 \uC801\uD569\uD55C \uCE90\uB9AD\uD130\uAC00 \uC788\uB2E4\uBA74 "speakerCharacterName"\uC744 \uC120\uD0DD\uC801\uC73C\uB85C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uB300\uC0AC...", "speakerCharacterName": "NPC \uC774\uB984"}`;
+      break;
+    case "\uC120\uD0DD" /* CHOICE */:
+      prompt += `\uC120\uD0DD\uC9C0 \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4), "content"(\uC120\uD0DD\uC9C0\uB85C \uC774\uC5B4\uC9C0\uB294 \uC0C1\uD669, 1-2 \uBB38\uC7A5), \uADF8\uB9AC\uACE0 2-3\uAC1C\uC758 \uD50C\uB808\uC774\uC5B4 \uB300\uD654 \uC635\uC158\uC744 \uD3EC\uD568\uD558\uB294 "choices" \uBC30\uC5F4(\uAC01 \uC120\uD0DD\uC9C0 \uAC1D\uCCB4\uB294 "text" \uC18D\uC131\uC744 \uAC00\uC9D0)\uC744 \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uC0C1\uD669...", "choices": [{"text": "\uC120\uD0DD 1"}, {"text": "\uC120\uD0DD 2"}]}`;
+      break;
+    case "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */:
+      prompt += `\uC77C\uBC18 \uC804\uD22C \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4), "content"(\uC804\uD22C \uC0C1\uD669 \uC124\uBA85, 1-2 \uBB38\uC7A5), "enemyNames"(\uC2A4\uD14C\uC774\uC9C0\uC758 \uAE30\uC874 \uBAAC\uC2A4\uD130 \uB610\uB294 \uC0C8\uB85C\uC6B4 \uD14C\uB9C8\uC758 \uC77C\uBC18 \uBAAC\uC2A4\uD130 \uC774\uB984 1-3\uAC1C \uBC30\uC5F4), \uADF8\uB9AC\uACE0 \uC120\uD0DD\uC801\uC73C\uB85C "reward"(\uC608: "\uCE58\uC720 \uBB3C\uC57D")\uB97C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uC804\uD22C \uC124\uBA85...", "enemyNames": ["\uC77C\uBC18\uC8011", "\uC77C\uBC18\uC8012"], "reward": "\uC608\uC2DC \uBCF4\uC0C1"}`;
+      break;
+    case "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */:
+      prompt += `\uBCF4\uC2A4 \uC804\uD22C \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. \uC774 \uC804\uD22C\uB294 \uC2A4\uD14C\uC774\uC9C0\uC758 \uC8FC\uC694 \uB3C4\uC804 \uACFC\uC81C\uC785\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4, \uBCF4\uC2A4 \uC774\uB984 \uD3EC\uD568 \uAC00\uB2A5), "content"(\uBCF4\uC2A4 \uC804\uD22C\uC758 \uAE34\uC7A5\uAC10 \uB118\uCE58\uB294 \uC0C1\uD669 \uC124\uBA85, 1-3 \uBB38\uC7A5), "enemyNames"(\uC2A4\uD14C\uC774\uC9C0\uC758 \uAE30\uC874 \uBCF4\uC2A4 \uBAAC\uC2A4\uD130 \uB610\uB294 \uC0C8\uB85C\uC6B4 \uAC15\uB825\uD55C \uBCF4\uC2A4 \uBAAC\uC2A4\uD130 \uC774\uB984 1\uAC1C \uBC30\uC5F4), \uADF8\uB9AC\uACE0 "reward"(\uC608: "\uC804\uC124\uC801\uC778 \uC720\uBB3C \uC870\uAC01")\uB97C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uBCF4\uC2A4\uC804: \uADF8\uB9BC\uC790 \uAD70\uC8FC", "content": "\uB9C8\uCE68\uB0B4 \uADF8\uB9BC\uC790 \uAD70\uC8FC\uC640 \uB300\uBA74\uD569\uB2C8\uB2E4! \uADF8\uC758 \uAC15\uB825\uD55C \uACF5\uACA9\uC774 \uBC29\uC744 \uB4A4\uD754\uB4ED\uB2C8\uB2E4.", "enemyNames": ["\uADF8\uB9BC\uC790 \uAD70\uC8FC"], "reward": "\uC5B4\uB460\uC758 \uC2EC\uC7A5"}`;
+      break;
+    case "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */:
+      prompt += `\uC544\uC774\uD15C \uD68D\uB4DD \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4), "content"(\uC544\uC774\uD15C\uC744 \uBC1C\uACAC\uD558\uAC70\uB098 \uC5BB\uB294 \uBC29\uBC95\uC5D0 \uB300\uD55C 1-2 \uBB38\uC7A5 \uC124\uBA85), \uADF8\uB9AC\uACE0 "itemName"(\uC544\uC774\uD15C \uC774\uB984, \uC608: "\uACE0\uB300 \uAC80", "\uCE58\uC720 \uD5C8\uBE0C")\uC744 \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uD68D\uB4DD \uACFC\uC815...", "itemName": "\uC608\uC2DC \uC544\uC774\uD15C"}`;
+      break;
+    case "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */:
+      prompt += `\uC7A5\uC18C \uBCC0\uACBD \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4), "content"(\uC0C8\uB85C\uC6B4 \uC7A5\uC18C\uC5D0 \uB3C4\uCC29\uD558\uAC70\uB098 \uADF8 \uC7A5\uC18C \uC790\uCCB4\uC5D0 \uB300\uD55C 1-2 \uBB38\uC7A5 \uC124\uBA85), \uADF8\uB9AC\uACE0 "newLocationName"(\uC0C8\uB85C\uC6B4 \uC7A5\uC18C/\uC9C0\uC5ED \uC774\uB984, \uC608: "\uC18D\uC0AD\uC774\uB294 \uB3D9\uAD74", "\uC2DC\uC7A5")\uC744 \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uC608\uC2DC \uC81C\uBAA9", "content": "\uC608\uC2DC \uC7A5\uC18C \uC124\uBA85...", "newLocationName": "\uC608\uC2DC \uC0C8 \uC7A5\uC18C"}`;
+      break;
+    case "\uB9C8\uC744" /* TOWN */:
+      prompt += `\uB9C8\uC744 \uC7A5\uBA74\uC744 \uC0DD\uC131\uD569\uB2C8\uB2E4. \uD50C\uB808\uC774\uC5B4\uAC00 \uC26C\uAC70\uB098, \uC0C1\uC810\uC744 \uC774\uC6A9\uD558\uAC70\uB098, \uB2E4\uC74C \uBAA8\uD5D8\uC744 \uC900\uBE44\uD560 \uC218 \uC788\uB294 \uC548\uC804\uD55C \uC7A5\uC18C\uC785\uB2C8\uB2E4. "title"(\uCD5C\uB300 5\uB2E8\uC5B4, \uB9C8\uC744 \uC774\uB984 \uD3EC\uD568), "content"(\uB9C8\uC744\uC758 \uBD84\uC704\uAE30\uB098 \uC8FC\uC694 \uD2B9\uC9D5\uC744 \uC124\uBA85\uD558\uB294 1-3 \uBB38\uC7A5)\uB97C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+                 JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"title": "\uD3C9\uD654\uB85C\uC6B4 \uC624\uC544\uC2DC\uC2A4 \uB9C8\uC744", "content": "\uC0AC\uB9C9 \uD55C\uAC00\uC6B4\uB370 \uC790\uB9AC \uC7A1\uC740 \uC774 \uC791\uC740 \uB9C8\uC744\uC740 \uC5EC\uD589\uC790\uB4E4\uC5D0\uAC8C \uC548\uC2DD\uCC98\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4. \uBD84\uC8FC\uD55C \uC2DC\uC7A5\uACFC \uCE5C\uC808\uD55C \uC8FC\uBBFC\uB4E4\uC774 \uBC29\uBB38\uAC1D\uC744 \uB9DE\uC774\uD569\uB2C8\uB2E4."}`;
+      break;
+    default:
+      throw new Error(`\uC7A5\uBA74 \uC720\uD615 ${sceneType}\uC5D0 \uB300\uD55C AI \uC0DD\uC131\uC774 \uAD6C\uD604\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.`);
+  }
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL_TEXT,
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    const details = parseJsonFromResponse(response.text);
+    if (!details || typeof details.title !== "string" || typeof details.content !== "string") {
+      throw new Error(`${sceneType} \uC7A5\uBA74\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC774 \uC608\uC0C1 \uD615\uC2DD\uACFC \uB2E4\uB985\uB2C8\uB2E4. \uC81C\uBAA9\uC774\uB098 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+    }
+    if (sceneType === "\uC120\uD0DD" /* CHOICE */ && (!Array.isArray(details.choices) || !details.choices.every((c) => typeof c.text === "string"))) {
+      throw new Error("\uC120\uD0DD \uC7A5\uBA74\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC758 \uC120\uD0DD\uC9C0 \uD615\uC2DD\uC774 \uC798\uBABB\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    }
+    if ((sceneType === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || sceneType === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) && !Array.isArray(details.enemyNames)) {
+      throw new Error("\uC804\uD22C \uC7A5\uBA74\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC758 \uC801 \uC774\uB984 \uD615\uC2DD\uC774 \uC798\uBABB\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    }
+    if (sceneType === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ && typeof details.itemName !== "string") {
+      throw new Error("\uC544\uC774\uD15C \uD68D\uB4DD \uC7A5\uBA74\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC5D0 'itemName'\uC774 \uC5C6\uAC70\uB098 \uD615\uC2DD\uC774 \uC798\uBABB\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    }
+    if (sceneType === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ && typeof details.newLocationName !== "string") {
+      throw new Error("\uC7A5\uC18C \uBCC0\uACBD \uC7A5\uBA74\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC5D0 'newLocationName'\uC774 \uC5C6\uAC70\uB098 \uD615\uC2DD\uC774 \uC798\uBABB\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    }
+    return details;
+  } catch (error) {
+    console.error(`AI\uB85C ${sceneType} \uC7A5\uBA74 \uC0C1\uC138\uC815\uBCF4 \uC0DD\uC131 \uC911 \uC624\uB958 \uBC1C\uC0DD:`, error);
+    throw error;
+  }
+};
+var generateCharacterWithAI = async (worldSettings, stage, characterType, customPrompt) => {
+  const ai = getAI();
+  let prompt = `
+    RPG \uC138\uACC4\uAD00: ${worldSettings.description}
+    \uD604\uC7AC \uC2A4\uD14C\uC774\uC9C0: "${stage.title}" - ${stage.settingDescription}
+    \uC0DD\uC131\uD560 \uCE90\uB9AD\uD130 \uC720\uD615: ${characterType}
+    \uC2A4\uD14C\uC774\uC9C0 \uB0B4 \uAE30\uC874 \uCE90\uB9AD\uD130: ${stage.characters.map((c) => `${c.name} (${c.type})`).join(", ") || "\uC544\uC9C1 \uC5C6\uC74C"}
+    ${customPrompt ? `
+\uD2B9\uC815 \uC694\uCCAD: ${customPrompt}` : ""}
+
+    \uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0 \uC801\uD569\uD55C \uB9E4\uB825\uC801\uC778 ${characterType} \uCE90\uB9AD\uD130\uB97C \uC0DD\uC131\uD574\uC8FC\uC138\uC694.
+    "name", \uD14C\uB9C8\uC5D0 \uB9DE\uB294 "description"(1-2 \uBB38\uC7A5), \uADF8\uB9AC\uACE0 NPC\uC778 \uACBD\uC6B0 "dialogueSeed"(\uC774 NPC\uAC00 \uB9D0\uD560 \uC218 \uC788\uB294 \uC9E7\uC740 \uBB38\uAD6C\uB098 \uC8FC\uC81C, \uCD5C\uB300 10\uB2E8\uC5B4)\uB97C \uC81C\uACF5\uD574\uC8FC\uC138\uC694.
+    \uCE90\uB9AD\uD130\uB294 \uB3C5\uCC3D\uC801\uC774\uACE0 \uC2A4\uD14C\uC774\uC9C0 \uBC0F \uC138\uACC4\uAD00\uC758 \uB9E5\uB77D\uC5D0 \uB9DE\uC544\uC57C \uD569\uB2C8\uB2E4.
+    \uBAA8\uB4E0 \uC751\uB2F5(\uC774\uB984, \uC124\uBA85, \uB300\uD654 \uC2DC\uB4DC \uB4F1)\uC740 \uBC18\uB4DC\uC2DC \uD55C\uAD6D\uC5B4\uB85C \uC791\uC131\uD574\uC8FC\uC138\uC694.
+    JSON \uD615\uC2DD\uC73C\uB85C \uBC18\uD658: {"name": "\uCE90\uB9AD\uD130 \uC774\uB984", "description": "\uCE90\uB9AD\uD130 \uC124\uBA85..."${characterType === "NPC" /* NPC */ ? ', "dialogueSeed": "\uB300\uD654 \uC2DC\uB4DC \uC608\uC2DC..."' : ""}}
+  `;
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL_TEXT,
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    const suggestion = parseJsonFromResponse(response.text);
+    if (!suggestion || typeof suggestion.name !== "string" || typeof suggestion.description !== "string") {
+      throw new Error(`${characterType}\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC774 \uC608\uC0C1 \uD615\uC2DD\uACFC \uB2E4\uB985\uB2C8\uB2E4.`);
+    }
+    if (characterType === "NPC" /* NPC */ && typeof suggestion.dialogueSeed !== "string") {
+      throw new Error(`NPC \uCE90\uB9AD\uD130\uC5D0 \uB300\uD55C AI \uC751\uB2F5\uC5D0 'dialogueSeed'\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+    }
+    return suggestion;
+  } catch (error) {
+    console.error(`AI\uB85C ${characterType} \uC0DD\uC131 \uC911 \uC624\uB958 \uBC1C\uC0DD:`, error);
+    throw error;
+  }
+};
+var generateFullStageWithAI = async (worldSettings, stageConcept, existingStages) => {
+  const ai = getAI();
+  let themeInstruction = "";
+  if (stageConcept.theme) {
+    themeInstruction = `
+  \uC2A4\uD14C\uC774\uC9C0 \uCF58\uC149\uD2B8:
+  - \uC81C\uBAA9 \uC81C\uC548(\uC120\uD0DD\uC0AC\uD56D): ${stageConcept.titleHint || "(AI\uAC00 \uC0DD\uC131)"}
+  - \uC0AC\uC6A9\uC790 \uC81C\uACF5 \uD14C\uB9C8/\uD575\uC2EC \uC544\uC774\uB514\uC5B4: ${stageConcept.theme}
+      `;
+  } else {
+    if (existingStages.length === 0) {
+      themeInstruction = `
+  \uC2A4\uD14C\uC774\uC9C0 \uCF58\uC149\uD2B8:
+  - \uC0AC\uC6A9\uC790\uAC00 \uD14C\uB9C8\uB97C \uC81C\uACF5\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.
+  - \uC8FC\uC5B4\uC9C4 '\uC138\uACC4\uAD00 \uC124\uC815'\uC744 \uBC14\uD0D5\uC73C\uB85C \uC774 \uC138\uACC4\uAD00\uC5D0 \uC5B4\uC6B8\uB9AC\uB294 \uD765\uBBF8\uB85C\uC6B4 \uCCAB \uBC88\uC9F8 \uC2A4\uD14C\uC774\uC9C0\uC758 \uD14C\uB9C8\uC640 \uC2A4\uD1A0\uB9AC\uB97C \uCC3D\uC758\uC801\uC73C\uB85C \uAD6C\uC0C1\uD574\uC8FC\uC138\uC694.
+  - \uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9\uB3C4 AI\uAC00 \uC138\uACC4\uAD00\uC5D0 \uB9DE\uCDB0 \uC0DD\uC131\uD574\uC8FC\uC138\uC694. (\uC0AC\uC6A9\uC790 \uC81C\uBAA9 \uC81C\uC548: ${stageConcept.titleHint || "\uC5C6\uC74C"})
+          `;
+    } else {
+      const previousStageSummaries = existingStages.slice(-3).map((s) => `- "${s.title}": ${s.settingDescription.substring(0, 100)}...`).join("\n    ");
+      themeInstruction = `
+  \uC2A4\uD14C\uC774\uC9C0 \uCF58\uC149\uD2B8:
+  - \uC0AC\uC6A9\uC790\uAC00 \uD14C\uB9C8\uB97C \uC81C\uACF5\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.
+  - \uC774\uC804\uC5D0 \uB2E4\uC74C\uACFC \uAC19\uC740 \uC2A4\uD14C\uC774\uC9C0\uB4E4\uC774 \uC774\uBBF8 \uC874\uC7AC\uD569\uB2C8\uB2E4 (\uCD5C\uADFC ${existingStages.slice(-3).length}\uAC1C \uC694\uC57D):
+    ${previousStageSummaries || "\uC5C6\uC74C"}
+  - \uC8FC\uC5B4\uC9C4 '\uC138\uACC4\uAD00 \uC124\uC815'\uACFC \uC704 '\uC774\uC804 \uC2A4\uD14C\uC774\uC9C0\uB4E4\uC758 \uB0B4\uC6A9'\uC744 \uACE0\uB824\uD558\uC5EC, \uC774\uC57C\uAE30\uAC00 \uC790\uC5F0\uC2A4\uB7FD\uAC8C \uC774\uC5B4\uC9C0\uAC70\uB098 \uC138\uACC4\uAD00\uC744 \uD655\uC7A5\uD558\uB294 \uC0C8\uB85C\uC6B4 \uC2A4\uD14C\uC774\uC9C0\uC758 \uD14C\uB9C8\uC640 \uC2A4\uD1A0\uB9AC\uB97C \uCC3D\uC758\uC801\uC73C\uB85C \uAD6C\uC0C1\uD574\uC8FC\uC138\uC694.
+  - \uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9\uB3C4 AI\uAC00 \uB9E5\uB77D\uC5D0 \uB9DE\uCDB0 \uC0DD\uC131\uD574\uC8FC\uC138\uC694. (\uC0AC\uC6A9\uC790 \uC81C\uBAA9 \uC81C\uC548: ${stageConcept.titleHint || "\uC5C6\uC74C"})
+          `;
+    }
+  }
+  const prompt = `
+    \uB2F9\uC2E0\uC740 RPG \uC2DC\uB098\uB9AC\uC624 \uC791\uAC00\uC785\uB2C8\uB2E4. \uC8FC\uC5B4\uC9C4 \uC138\uACC4\uAD00 \uC124\uC815\uACFC \uC2A4\uD14C\uC774\uC9C0 \uCF58\uC149\uD2B8\uB97C \uAE30\uBC18\uC73C\uB85C \uC644\uBCBD\uD55C \uC2A4\uD14C\uC774\uC9C0\uB97C \uC0DD\uC131\uD574\uC8FC\uC138\uC694.
+    \uC2A4\uD14C\uC774\uC9C0\uB294 \uCD5C\uC18C 20\uAC1C \uC774\uC0C1\uC758 \uC7A5\uBA74\uC73C\uB85C \uAD6C\uC131\uB418\uC5B4\uC57C \uD558\uBA70, \uB9C8\uC9C0\uB9C9 \uC7A5\uBA74\uC740 \uBC18\uB4DC\uC2DC '\uBCF4\uC2A4 \uC804\uD22C'\uC5EC\uC57C \uD569\uB2C8\uB2E4.
+    \uB4F1\uC7A5\uD558\uB294 \uCE90\uB9AD\uD130(NPC, \uC77C\uBC18 \uBAAC\uC2A4\uD130, \uBCF4\uC2A4 \uBAAC\uC2A4\uD130)\uC640 \uC7A5\uBA74\uB4E4\uC774 \uC720\uAE30\uC801\uC73C\uB85C \uC5F0\uACB0\uB418\uB3C4\uB85D \uD574\uC8FC\uC138\uC694.
+    \uBAA8\uB4E0 \uD14D\uC2A4\uD2B8(\uC81C\uBAA9, \uC124\uBA85, \uB300\uC0AC, \uC544\uC774\uD15C \uC774\uB984 \uB4F1)\uB294 \uD55C\uAD6D\uC5B4\uB85C \uC791\uC131\uD574\uC57C \uD569\uB2C8\uB2E4.
+    \uC2A4\uD14C\uC774\uC9C0 \uB0B4\uC5D0 '\uB9C8\uC744' \uC7A5\uBA74\uC744 \uD558\uB098 \uC774\uC0C1 \uD3EC\uD568\uD558\uB294 \uAC83\uC744 \uACE0\uB824\uD574\uC8FC\uC138\uC694. \uB9C8\uC744\uC740 \uD50C\uB808\uC774\uC5B4\uAC00 \uC7AC\uC815\uBE44\uD560 \uC218 \uC788\uB294 \uC548\uC804\uD55C \uC7A5\uC18C\uC785\uB2C8\uB2E4.
+
+    \uC138\uACC4\uAD00 \uC124\uC815:
+    - \uC81C\uBAA9: ${worldSettings.title}
+    - \uC124\uBA85: ${worldSettings.description}
+    - \uC8FC\uC694 \uAC08\uB4F1: ${worldSettings.mainConflict}
+    - \uC8FC\uC694 \uC7A5\uC18C: ${worldSettings.keyLocations}
+
+    ${themeInstruction}
+
+    \uB2E4\uC74C JSON \uAD6C\uC870\uB85C \uC751\uB2F5\uD574\uC8FC\uC138\uC694:
+    {
+      "generatedStageTitle": "AI\uAC00 \uC0DD\uC131\uD55C \uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9 (\uD55C\uAD6D\uC5B4)",
+      "generatedStageSettingDescription": "AI\uAC00 \uC0DD\uC131\uD55C \uC2A4\uD14C\uC774\uC9C0 \uBC30\uACBD \uC124\uBA85 (\uD55C\uAD6D\uC5B4, 1-2 \uBB38\uC7A5)",
+      "characters": [
+        {
+          "name": "\uCE90\uB9AD\uD130 \uC774\uB984 (\uD55C\uAD6D\uC5B4)",
+          "type": "${Object.values(CharacterType).join(" \uB610\uB294 ")} \uC911 \uD558\uB098",
+          "description": "\uCE90\uB9AD\uD130 \uC0C1\uC138 \uC124\uBA85 (\uD55C\uAD6D\uC5B4)",
+          "dialogueSeed": "(NPC\uC778 \uACBD\uC6B0) \uC8FC\uC694 \uB300\uD654 \uC8FC\uC81C\uB098 \uC9E7\uC740 \uB300\uC0AC (\uD55C\uAD6D\uC5B4)"
+        }
+      ],
+      "scenes": [
+        {
+          "type": "${Object.values(SceneType).join(" \uB610\uB294 ")} \uC911 \uD558\uB098",
+          "title": "\uC7A5\uBA74 \uC81C\uBAA9 (\uD55C\uAD6D\uC5B4)",
+          "content": "\uC7A5\uBA74 \uB0B4\uC6A9 \uB610\uB294 \uC0C1\uD669 \uC124\uBA85 (\uD55C\uAD6D\uC5B4)",
+          "speakerCharacterName": "(\uC7A5\uBA74 \uC720\uD615\uC774 '\uB300\uD654'\uC778 \uACBD\uC6B0) \uC704 'characters' \uBC30\uC5F4\uC5D0 \uC815\uC758\uB41C NPC\uC758 'name'",
+          "choices": [
+            {
+              "text": "\uC120\uD0DD\uC9C0 1 \uD14D\uC2A4\uD2B8 (\uD55C\uAD6D\uC5B4)",
+              "suggestedNextSceneTitle": "\uC774 \uC120\uD0DD\uC9C0\uAC00 \uC774\uC5B4\uC9C8 \uC7A5\uBA74\uC758 \uC81C\uBAA9 (\uC774 \uC2A4\uD14C\uC774\uC9C0 \uB0B4 \uB2E4\uB978 \uC7A5\uBA74\uC758 \uC81C\uBAA9, \uD55C\uAD6D\uC5B4)"
+            }
+          ],
+          "enemyNames": [ "\uBAAC\uC2A4\uD130 \uB610\uB294 \uBCF4\uC2A4 \uC774\uB984 1" ],
+          "reward": "(\uC804\uD22C \uC7A5\uBA74\uC778 \uACBD\uC6B0) \uD68D\uB4DD \uBCF4\uC0C1 \uC124\uBA85 (\uD55C\uAD6D\uC5B4)",
+          "itemName": "(\uC7A5\uBA74 \uC720\uD615\uC774 '\uC544\uC774\uD15C \uD68D\uB4DD'\uC778 \uACBD\uC6B0) \uD68D\uB4DD \uC544\uC774\uD15C \uC774\uB984 (\uD55C\uAD6D\uC5B4)",
+          "newLocationName": "(\uC7A5\uBA74 \uC720\uD615\uC774 '\uC7A5\uC18C \uBCC0\uACBD'\uC778 \uACBD\uC6B0) \uC0C8\uB85C\uC6B4 \uC7A5\uC18C \uC774\uB984 (\uD55C\uAD6D\uC5B4)"
+        }
+      ]
+    }
+
+    \uC911\uC694 \uADDC\uCE59:
+    1.  'characters' \uBC30\uC5F4\uC740 'scenes' \uBC30\uC5F4\uC5D0\uC11C \uCC38\uC870\uB420 \uBAA8\uB4E0 \uCE90\uB9AD\uD130\uB97C \uC815\uC758\uD574\uC57C \uD569\uB2C8\uB2E4.
+    2.  '\uB300\uD654' \uC7A5\uBA74\uC758 'speakerCharacterName'\uC740 'characters' \uBC30\uC5F4\uC758 NPC \uC774\uB984\uACFC \uC77C\uCE58\uD574\uC57C \uD569\uB2C8\uB2E4.
+    3.  '\uC77C\uBC18 \uC804\uD22C' \uB610\uB294 '\uBCF4\uC2A4 \uC804\uD22C' \uC7A5\uBA74\uC758 'enemyNames'\uB294 'characters' \uBC30\uC5F4\uC758 \uBAAC\uC2A4\uD130/\uBCF4\uC2A4 \uC774\uB984\uACFC \uC77C\uCE58\uD574\uC57C \uD569\uB2C8\uB2E4.
+    4.  'scenes' \uBC30\uC5F4\uC758 \uB9C8\uC9C0\uB9C9 \uC7A5\uBA74\uC740 \uBC18\uB4DC\uC2DC "type": "${"\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */}"\uC5EC\uC57C \uD558\uBA70, 'characters' \uBC30\uC5F4\uC758 '${"\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */}' \uC720\uD615 \uCE90\uB9AD\uD130\uB97C \uD3EC\uD568\uD574\uC57C \uD569\uB2C8\uB2E4.
+    5.  \uCD1D \uC7A5\uBA74 \uC218\uB294 \uCD5C\uC18C 20\uAC1C \uC774\uC0C1\uC774\uC5B4\uC57C \uD558\uBA70, \uB2E4\uC591\uD55C \uC7A5\uBA74 \uC720\uD615\uC744 \uC0AC\uC6A9\uD574\uC57C \uD569\uB2C8\uB2E4. (\uC608: ${"\uB9C8\uC744" /* TOWN */}, ${"\uB098\uB808\uC774\uC158" /* NARRATION */}, ${"\uB300\uD654" /* DIALOGUE */}, ${"\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */} \uB4F1)
+    6.  \uC774\uC57C\uAE30\uAC00 \uC7A5\uBA74 \uAC04\uC5D0 \uB17C\uB9AC\uC801\uC73C\uB85C \uD758\uB7EC\uAC00\uB3C4\uB85D \uAD6C\uC131\uD574\uC8FC\uC138\uC694. '\uC120\uD0DD' \uC7A5\uBA74\uC758 \uAC01 'choices'\uC5D0 \uC788\uB294 'suggestedNextSceneTitle'\uC740 \uD604\uC7AC \uC0DD\uC131 \uC911\uC778 \uB2E4\uB978 \uC7A5\uBA74\uC758 'title'\uC744 \uCC38\uC870\uD574\uC57C \uD558\uBA70, \uAC00\uAE09\uC801 \uD574\uB2F9 \uC120\uD0DD \uC7A5\uBA74 \uC774\uD6C4\uC5D0 \uB098\uC624\uB294 \uC7A5\uBA74\uC73C\uB85C \uC5F0\uACB0\uD558\uC5EC \uC774\uC57C\uAE30\uAC00 \uC55E\uC73C\uB85C \uC9C4\uD589\uB418\uB3C4\uB85D \uD574\uC8FC\uC138\uC694.
+    7.  \uBAA8\uB4E0 \uD14D\uC2A4\uD2B8\uB294 \uD55C\uAD6D\uC5B4\uB85C \uC791\uC131\uD574\uC8FC\uC138\uC694.
+  `;
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL_TEXT,
+      contents: prompt,
+      config: { responseMimeType: "application/json", temperature: 0.7 }
+    });
+    const aiOutput = parseJsonFromResponse(response.text);
+    if (!aiOutput || !aiOutput.generatedStageTitle || !aiOutput.characters || !aiOutput.scenes || aiOutput.scenes.length < 1) {
+      throw new Error("AI \uC751\uB2F5\uC774 \uD544\uC218 \uD544\uB4DC\uB97C \uD3EC\uD568\uD558\uC9C0 \uC54A\uAC70\uB098 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    }
+    if (aiOutput.scenes.length < 20) {
+      console.warn(`AI\uAC00 ${aiOutput.scenes.length}\uAC1C\uC758 \uC7A5\uBA74\uB9CC \uC0DD\uC131\uD588\uC2B5\uB2C8\uB2E4. (\uCD5C\uC18C 20\uAC1C \uC694\uCCAD)`);
+    }
+    if (aiOutput.scenes[aiOutput.scenes.length - 1].type !== "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) {
+      throw new Error("AI \uC751\uB2F5\uC758 \uB9C8\uC9C0\uB9C9 \uC7A5\uBA74\uC774 \uBCF4\uC2A4 \uC804\uD22C\uAC00 \uC544\uB2D9\uB2C8\uB2E4. AI\uAC00 \uC0DD\uC131\uD55C \uB9C8\uC9C0\uB9C9 \uC7A5\uBA74 \uC720\uD615: " + aiOutput.scenes[aiOutput.scenes.length - 1].type);
+    }
+    const finalCharacters = aiOutput.characters.map((charSuggestion) => ({
+      id: generateId(),
+      name: charSuggestion.name,
+      type: charSuggestion.type,
+      description: charSuggestion.description,
+      dialogueSeed: charSuggestion.dialogueSeed
+    }));
+    const initialScenes = aiOutput.scenes.map((sceneSuggestion) => {
+      const sceneId = generateId();
+      const newScene = {
+        id: sceneId,
+        stageId: "",
+        // Placeholder
+        title: sceneSuggestion.title,
+        type: sceneSuggestion.type,
+        content: sceneSuggestion.content,
+        characterIds: [],
+        choices: void 0,
+        nextSceneId: null,
+        combatDetails: void 0,
+        item: void 0,
+        newLocationName: void 0
+      };
+      if (sceneSuggestion.type === "\uB300\uD654" /* DIALOGUE */ && sceneSuggestion.speakerCharacterName) {
+        const speaker = finalCharacters.find((c) => c.name === sceneSuggestion.speakerCharacterName && c.type === "NPC" /* NPC */);
+        if (speaker) newScene.characterIds = [speaker.id];
+        else console.warn(`\uB300\uD654 \uC7A5\uBA74 "${sceneSuggestion.title}"\uC758 \uD654\uC790 "${sceneSuggestion.speakerCharacterName}"\uC744(\uB97C) \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+      }
+      if ((sceneSuggestion.type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || sceneSuggestion.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) && sceneSuggestion.enemyNames) {
+        const enemyIds = [];
+        sceneSuggestion.enemyNames.forEach((name) => {
+          const enemy = finalCharacters.find((c) => c.name === name && (c.type === "\uC77C\uBC18 \uBAAC\uC2A4\uD130" /* REGULAR_MONSTER */ || c.type === "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */));
+          if (enemy) enemyIds.push(enemy.id);
+          else console.warn(`\uC804\uD22C \uC7A5\uBA74 "${sceneSuggestion.title}"\uC758 \uC801 "${name}"\uC744(\uB97C) \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+        });
+        newScene.combatDetails = { enemyCharacterIds: enemyIds, reward: sceneSuggestion.reward || "" };
+      }
+      if (sceneSuggestion.type === "\uC120\uD0DD" /* CHOICE */ && sceneSuggestion.choices) {
+        newScene._tempChoices = sceneSuggestion.choices.map((choiceSuggestion) => ({
+          id: generateId(),
+          text: choiceSuggestion.text,
+          nextSceneId: null,
+          // Will be linked later
+          _aiSuggestedNextSceneTitle: choiceSuggestion.suggestedNextSceneTitle
+        }));
+        newScene.nextSceneId = void 0;
+      }
+      if (sceneSuggestion.type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ && sceneSuggestion.itemName) {
+        newScene.item = sceneSuggestion.itemName;
+      }
+      if (sceneSuggestion.type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ && sceneSuggestion.newLocationName) {
+        newScene.newLocationName = sceneSuggestion.newLocationName;
+      }
+      return newScene;
+    });
+    const finalScenes = initialScenes.map((currentScene, index, allScenes) => {
+      const sceneCopy = { ...currentScene };
+      if (index < allScenes.length - 1 && sceneCopy.type !== "\uC120\uD0DD" /* CHOICE */) {
+        sceneCopy.nextSceneId = allScenes[index + 1].id;
+      }
+      if (sceneCopy.type === "\uC120\uD0DD" /* CHOICE */ && sceneCopy._tempChoices) {
+        sceneCopy.choices = sceneCopy._tempChoices.map((tempChoice) => {
+          let resolvedNextSceneId = null;
+          if (tempChoice._aiSuggestedNextSceneTitle) {
+            const targetScene = initialScenes.find((s) => s.title === tempChoice._aiSuggestedNextSceneTitle);
+            if (targetScene) {
+              if (targetScene.id === sceneCopy.id) {
+                console.warn(`AI Stage Wizard: Choice "${tempChoice.text}" in scene "${sceneCopy.title}" suggested linking to itself. This link will be ignored.`);
+              } else {
+                resolvedNextSceneId = targetScene.id;
+              }
+            } else {
+              console.warn(`AI Stage Wizard: For choice "${tempChoice.text}" in scene "${sceneCopy.title}", could not find suggested next scene titled "${tempChoice._aiSuggestedNextSceneTitle}". This choice will lead to nowhere unless manually linked.`);
+            }
+          }
+          return {
+            id: tempChoice.id,
+            text: tempChoice.text,
+            nextSceneId: resolvedNextSceneId
+          };
+        });
+      }
+      delete sceneCopy._tempChoices;
+      return sceneCopy;
+    });
+    return {
+      stageDetails: {
+        title: aiOutput.generatedStageTitle,
+        settingDescription: aiOutput.generatedStageSettingDescription
+      },
+      characters: finalCharacters,
+      scenes: finalScenes
+    };
+  } catch (error) {
+    console.error("AI\uB85C \uC804\uCCB4 \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131 \uC911 \uC624\uB958 \uBC1C\uC0DD:", error);
+    throw error;
+  }
+};
+
+// components/AIStageWizardModal.tsx
+import { useState as useState2 } from "react";
+
+// components/shared/Modal.tsx
+import { jsx as jsx6, jsxs as jsxs5 } from "react/jsx-runtime";
+var Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
+  if (!isOpen) return null;
+  const sizeClasses = {
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
+    full: "max-w-full h-full"
+  };
+  return /* @__PURE__ */ jsx6("div", { className: "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out", onClick: onClose, children: /* @__PURE__ */ jsxs5(
+    "div",
+    {
+      className: `bg-gray-800 rounded-lg shadow-xl p-6 w-full ${sizeClasses[size]} text-gray-100 transform transition-all duration-300 ease-in-out scale-95 opacity-0 animate-modalShow`,
+      onClick: (e) => e.stopPropagation(),
+      children: [
+        /* @__PURE__ */ jsxs5("div", { className: "flex justify-between items-center mb-4", children: [
+          /* @__PURE__ */ jsx6("h2", { className: "text-xl font-semibold text-purple-400", children: title }),
+          /* @__PURE__ */ jsx6(
+            "button",
+            {
+              onClick: onClose,
+              className: "text-gray-400 hover:text-gray-200 transition-colors",
+              "aria-label": "Close modal",
+              children: /* @__PURE__ */ jsx6(XIcon, { className: "w-6 h-6" })
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsx6("div", { className: "max-h-[80vh] overflow-y-auto pr-2", children })
+      ]
+    }
+  ) });
+};
+var Modal_default = Modal;
+
+// components/AIStageWizardModal.tsx
+import { jsx as jsx7, jsxs as jsxs6 } from "react/jsx-runtime";
+var AIStageWizardModal = ({
+  isOpen,
+  onClose,
+  worldSettings,
+  existingStages,
+  // Destructure new prop
+  onStageGenerated,
+  setIsLoading,
+  setError
+}) => {
+  const [stageTitleHint, setStageTitleHint] = useState2("");
+  const [stageTheme, setStageTheme] = useState2("");
+  const handleGenerate = async () => {
+    if (!worldSettings?.title) {
+      setError("AI \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131\uC744 \uC704\uD574\uC11C\uB294 \uBA3C\uC800 \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uC644\uB8CC\uD574\uC57C \uD569\uB2C8\uB2E4.");
+      onClose();
+      return;
+    }
+    onClose();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const generatedData = await generateFullStageWithAI(
+        worldSettings,
+        {
+          titleHint: stageTitleHint,
+          theme: stageTheme
+        },
+        existingStages
+        // Pass existing stages
+      );
+      onStageGenerated(generatedData);
+      setStageTitleHint("");
+      setStageTheme("");
+    } catch (e) {
+      console.error("AI Stage Wizard generation failed:", e);
+      setError(e.message || "AI\uB85C \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC790\uC138\uD55C \uB0B4\uC6A9\uC740 \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsx7(
+    Modal_default,
+    {
+      isOpen,
+      onClose,
+      title: "AI \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131 \uB9C8\uBC95\uC0AC",
+      size: "lg",
+      children: /* @__PURE__ */ jsxs6("div", { className: "space-y-4", children: [
+        /* @__PURE__ */ jsx7("p", { className: "text-sm text-gray-300", children: "AI\uAC00 \uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9, \uC124\uBA85, \uCD5C\uC18C 20\uAC1C\uC758 \uC7A5\uBA74(\uB9C8\uC9C0\uB9C9\uC740 \uBCF4\uC2A4 \uC804\uD22C), \uADF8\uB9AC\uACE0 \uAD00\uB828 \uCE90\uB9AD\uD130\uB4E4\uC744 \uC720\uAE30\uC801\uC73C\uB85C \uC0DD\uC131\uD569\uB2C8\uB2E4. \uC2A4\uD14C\uC774\uC9C0 \uD14C\uB9C8\uB97C \uC785\uB825\uD558\uC9C0 \uC54A\uC73C\uBA74, AI\uAC00 \uC138\uACC4\uAD00 \uC124\uC815 \uB610\uB294 \uC774\uC804 \uC2A4\uD14C\uC774\uC9C0\uC758 \uB9E5\uB77D\uC744 \uAE30\uBC18\uC73C\uB85C \uD14C\uB9C8\uB97C \uC0DD\uC131\uD569\uB2C8\uB2E4." }),
+        /* @__PURE__ */ jsx7(
+          Input_default,
+          {
+            label: "\uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9 \uC81C\uC548 (\uC120\uD0DD\uC0AC\uD56D)",
+            value: stageTitleHint,
+            onChange: (e) => setStageTitleHint(e.target.value),
+            placeholder: "\uC608: \uC78A\uD600\uC9C4 \uC0AC\uC6D0 (\uBE44\uC6CC\uB450\uBA74 AI\uAC00 \uC0DD\uC131)"
+          }
+        ),
+        /* @__PURE__ */ jsx7(
+          TextArea_default,
+          {
+            label: "\uC2A4\uD14C\uC774\uC9C0 \uD14C\uB9C8 / \uCF58\uC149\uD2B8 (\uC120\uD0DD\uC0AC\uD56D)",
+            value: stageTheme,
+            onChange: (e) => setStageTheme(e.target.value),
+            placeholder: "\uC608: \uACE0\uB300 \uBB38\uBA85\uC758 \uC800\uC8FC\uBC1B\uC740 \uC720\uC801. \uD50C\uB808\uC774\uC5B4\uB294 \uC704\uD5D8\uD55C \uD568\uC815\uACFC \uC218\uC218\uAED8\uB07C\uB97C \uD5E4\uCCD0\uB098\uAC00 \uAC15\uB825\uD55C \uC720\uBB3C \uC218\uD638\uC790\uC640 \uB9DE\uC11C\uC57C \uD569\uB2C8\uB2E4. (\uBE44\uC6CC\uB450\uBA74 AI\uAC00 \uC790\uB3D9 \uC0DD\uC131)",
+            rows: 5
+          }
+        ),
+        !worldSettings?.title && /* @__PURE__ */ jsx7("p", { className: "text-xs text-yellow-400", children: "\uC138\uACC4\uAD00 \uC124\uC815, \uD2B9\uD788 \uC81C\uBAA9\uC774 \uC815\uC758\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. AI \uC0DD\uC131 \uD488\uC9C8\uC5D0 \uC601\uD5A5\uC744 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4." }),
+        /* @__PURE__ */ jsxs6("div", { className: "flex justify-end space-x-2 pt-2", children: [
+          /* @__PURE__ */ jsx7(Button_default, { onClick: onClose, variant: "secondary", children: "\uCDE8\uC18C" }),
+          /* @__PURE__ */ jsx7(
+            Button_default,
+            {
+              onClick: handleGenerate,
+              variant: "primary",
+              leftIcon: /* @__PURE__ */ jsx7(AISparklesIcon, { className: "w-5 h-5" }),
+              disabled: !worldSettings?.title,
+              children: "\uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131 \uC2DC\uC791"
+            }
+          )
+        ] })
+      ] })
+    }
+  );
+};
+var AIStageWizardModal_default = AIStageWizardModal;
+
+// components/StageListPanel.tsx
+import { Fragment as Fragment2, jsx as jsx8, jsxs as jsxs7 } from "react/jsx-runtime";
+var StageListPanel = ({
+  stages,
+  selectedStageId,
+  onSelectStage,
+  onAddStage,
+  onDeleteStage,
+  worldSettings,
+  onUpdateStages,
+  onAddFullGeneratedStage,
+  onPlayStage,
+  // Destructure new prop
+  setIsLoading,
+  setError
+}) => {
+  const [newStageTitle, setNewStageTitle] = useState3("");
+  const [isCollapsed, setIsCollapsed] = useState3(false);
+  const [isAiWizardOpen, setIsAiWizardOpen] = useState3(false);
+  const handleAddManualStage = () => {
+    if (newStageTitle.trim()) {
+      onAddStage(newStageTitle.trim());
+      setNewStageTitle("");
+    }
+  };
+  const handleGenerateStageSuggestionsAI = async () => {
+    if (!worldSettings || !worldSettings.title) {
+      setError("AI\uB85C \uC2A4\uD14C\uC774\uC9C0\uB97C \uC0DD\uC131\uD558\uAE30 \uC804\uC5D0 \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uC815\uC758\uD574\uC8FC\uC138\uC694.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const suggestions = await generateStagesWithAI(worldSettings);
+      const newStages = suggestions.map((s) => ({
+        id: generateId(),
+        title: s.title,
+        settingDescription: s.settingDescription,
+        scenes: [],
+        characters: []
+      }));
+      onUpdateStages([...stages, ...newStages]);
+    } catch (e) {
+      setError(e.message || "AI\uB85C \uC2A4\uD14C\uC774\uC9C0 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const handleStageGeneratedFromWizard = (data) => {
+    onAddFullGeneratedStage(data);
+    setIsAiWizardOpen(false);
+  };
+  return /* @__PURE__ */ jsxs7("div", { className: "mt-6", children: [
+    /* @__PURE__ */ jsxs7("div", { className: "flex justify-between items-center mb-3 cursor-pointer", onClick: () => setIsCollapsed(!isCollapsed), children: [
+      /* @__PURE__ */ jsx8("h2", { className: "text-xl font-semibold text-purple-400", children: "\uC2A4\uD14C\uC774\uC9C0" }),
+      isCollapsed ? /* @__PURE__ */ jsx8(ChevronRightIcon, { className: "w-6 h-6" }) : /* @__PURE__ */ jsx8(ChevronDownIcon, { className: "w-6 h-6" })
+    ] }),
+    !isCollapsed && /* @__PURE__ */ jsxs7(Fragment2, { children: [
+      /* @__PURE__ */ jsxs7("div", { className: "mb-4 space-y-2", children: [
+        /* @__PURE__ */ jsxs7("div", { className: "flex space-x-2", children: [
+          /* @__PURE__ */ jsx8(
+            "input",
+            {
+              type: "text",
+              value: newStageTitle,
+              onChange: (e) => setNewStageTitle(e.target.value),
+              placeholder: "\uC0C8 \uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9",
+              className: "flex-grow p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-purple-500 focus:border-purple-500"
+            }
+          ),
+          /* @__PURE__ */ jsx8(Button_default, { onClick: handleAddManualStage, variant: "primary", size: "md", disabled: !newStageTitle.trim(), className: "px-3", children: /* @__PURE__ */ jsx8(PlusIcon, { className: "w-5 h-5" }) })
+        ] }),
+        /* @__PURE__ */ jsx8(
+          Button_default,
+          {
+            onClick: handleGenerateStageSuggestionsAI,
+            variant: "ghost",
+            leftIcon: /* @__PURE__ */ jsx8(AISparklesIcon, { className: "w-5 h-5" }),
+            disabled: !worldSettings || !worldSettings.title,
+            className: "w-full",
+            children: "AI\uB85C \uC2A4\uD14C\uC774\uC9C0 \uC81C\uC548 (\uC81C\uBAA9/\uC124\uBA85)"
+          }
+        ),
+        /* @__PURE__ */ jsx8(
+          Button_default,
+          {
+            onClick: () => setIsAiWizardOpen(true),
+            variant: "success",
+            leftIcon: /* @__PURE__ */ jsx8(AISparklesIcon, { className: "w-5 h-5" }),
+            disabled: !worldSettings || !worldSettings.title,
+            className: "w-full",
+            children: "AI \uC2A4\uD14C\uC774\uC9C0 \uB9C8\uBC95\uC0AC (\uC804\uCCB4 \uC0DD\uC131)"
+          }
+        ),
+        (!worldSettings || !worldSettings.title) && /* @__PURE__ */ jsx8("p", { className: "text-xs text-yellow-400 mt-1", children: "AI \uAE30\uB2A5\uC744 \uC0AC\uC6A9\uD558\uB824\uBA74 \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uC815\uC758\uD558\uC138\uC694." })
+      ] }),
+      stages.length === 0 && /* @__PURE__ */ jsx8("p", { className: "text-gray-400 text-center py-4", children: "\uC544\uC9C1 \uC0DD\uC131\uB41C \uC2A4\uD14C\uC774\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C1\uC811 \uCD94\uAC00\uD558\uAC70\uB098 AI\uB97C \uC0AC\uC6A9\uD558\uC138\uC694!" }),
+      /* @__PURE__ */ jsx8("ul", { className: "space-y-2", children: stages.map((stage) => /* @__PURE__ */ jsxs7(
+        "li",
+        {
+          className: `p-3 rounded-md transition-all duration-150 ease-in-out group ${selectedStageId === stage.id ? "bg-purple-600 shadow-lg ring-2 ring-purple-400" : "bg-gray-600 hover:bg-gray-500"}`,
+          children: [
+            /* @__PURE__ */ jsxs7("div", { className: "flex justify-between items-center", children: [
+              /* @__PURE__ */ jsx8("div", { onClick: () => onSelectStage(stage.id), className: "flex-grow cursor-pointer overflow-hidden", children: /* @__PURE__ */ jsx8("span", { className: "font-medium truncate pr-2", children: stage.title }) }),
+              /* @__PURE__ */ jsxs7("div", { className: "flex items-center space-x-1 flex-shrink-0", children: [
+                /* @__PURE__ */ jsx8(
+                  "button",
+                  {
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      onPlayStage(stage.id);
+                    },
+                    className: "p-1.5 text-green-400 hover:text-green-300 rounded hover:bg-green-700",
+                    title: "\uC2A4\uD14C\uC774\uC9C0 \uD50C\uB808\uC774",
+                    children: /* @__PURE__ */ jsx8(PlayIcon, { className: "w-4 h-4" })
+                  }
+                ),
+                /* @__PURE__ */ jsx8(
+                  "button",
+                  {
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      onDeleteStage(stage.id);
+                    },
+                    className: "p-1.5 text-red-400 hover:text-red-300 rounded hover:bg-red-700 opacity-0 group-hover:opacity-100 transition-opacity",
+                    title: "\uC2A4\uD14C\uC774\uC9C0 \uC0AD\uC81C",
+                    children: /* @__PURE__ */ jsx8(TrashIcon, { className: "w-4 h-4" })
+                  }
+                )
+              ] })
+            ] }),
+            selectedStageId === stage.id && /* @__PURE__ */ jsx8("p", { className: "text-xs text-purple-200 mt-1 truncate cursor-pointer", onClick: () => onSelectStage(stage.id), children: stage.settingDescription })
+          ]
+        },
+        stage.id
+      )) })
+    ] }),
+    /* @__PURE__ */ jsx8(
+      AIStageWizardModal_default,
+      {
+        isOpen: isAiWizardOpen,
+        onClose: () => setIsAiWizardOpen(false),
+        worldSettings,
+        existingStages: stages,
+        onStageGenerated: handleStageGeneratedFromWizard,
+        setIsLoading,
+        setError
+      }
+    )
+  ] });
+};
+var StageListPanel_default = StageListPanel;
+
+// components/StageEditorPanel.tsx
+import { useState as useState4 } from "react";
+
+// components/shared/Select.tsx
+import { jsx as jsx9, jsxs as jsxs8 } from "react/jsx-runtime";
+var Select = ({
+  label,
+  id,
+  options,
+  placeholder,
+  // Destructure placeholder
+  leftIcon,
+  // Destructure leftIcon
+  wrapperClassName = "",
+  className = "",
+  ...otherProps
+  // Use ...otherProps to avoid spreading placeholder/leftIcon to native select
+}) => {
+  return /* @__PURE__ */ jsxs8("div", { className: wrapperClassName, children: [
+    label && /* @__PURE__ */ jsx9("label", { htmlFor: id, className: "block text-sm font-medium text-gray-300 mb-1", children: label }),
+    /* @__PURE__ */ jsxs8("div", { className: "relative", children: [
+      leftIcon && /* @__PURE__ */ jsx9("div", { className: "pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400", children: leftIcon }),
+      /* @__PURE__ */ jsxs8(
+        "select",
+        {
+          id,
+          className: `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-purple-500 focus:border-purple-500 focus:outline-none appearance-none pr-8 ${leftIcon ? "pl-10" : ""} transition-colors ${className}`,
+          ...otherProps,
+          children: [
+            placeholder && /* @__PURE__ */ jsx9("option", { value: "", disabled: true, children: placeholder }),
+            options.map((option) => /* @__PURE__ */ jsx9("option", { value: option.value, children: option.label }, option.value))
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsx9("div", { className: "pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400", children: /* @__PURE__ */ jsx9(ChevronDownIcon, { className: "w-5 h-5" }) })
+    ] })
+  ] });
+};
+var Select_default = Select;
+
+// components/StageEditorPanel.tsx
+import { jsx as jsx10, jsxs as jsxs9 } from "react/jsx-runtime";
+var SceneCard = ({ scene, isSelected, onSelect, onDelete, stageCharacters, allScenesInStage }) => {
+  const getCharacterName = (id) => stageCharacters.find((c) => c.id === id)?.name || "\uC54C \uC218 \uC5C6\uB294 \uCE90\uB9AD\uD130";
+  const getSceneTitle = (id) => id ? allScenesInStage.find((s) => s.id === id)?.title || "\uC54C \uC218 \uC5C6\uB294 \uC7A5\uBA74" : "\uC5C6\uC74C";
+  const sceneTypeLabel = (type) => {
+    return type;
+  };
+  return /* @__PURE__ */ jsxs9(
+    "div",
+    {
+      className: `p-4 rounded-lg shadow-md transition-all duration-150 ease-in-out cursor-pointer border-2 ${isSelected ? "bg-purple-700 border-purple-500" : "bg-gray-600 hover:bg-gray-500 border-gray-600 hover:border-gray-500"}`,
+      onClick: onSelect,
+      children: [
+        /* @__PURE__ */ jsxs9("div", { className: "flex justify-between items-center mb-2", children: [
+          /* @__PURE__ */ jsxs9("h4", { className: "text-lg font-semibold truncate text-purple-300", children: [
+            scene.title,
+            " ",
+            /* @__PURE__ */ jsxs9("span", { className: "text-xs text-gray-400", children: [
+              "(",
+              sceneTypeLabel(scene.type),
+              ")"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx10("div", { className: "flex space-x-2", children: /* @__PURE__ */ jsx10(
+            "button",
+            {
+              onClick: (e) => {
+                e.stopPropagation();
+                onDelete();
+              },
+              className: "p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-600",
+              title: "\uC7A5\uBA74 \uC0AD\uC81C",
+              children: /* @__PURE__ */ jsx10(TrashIcon, { className: "w-5 h-5" })
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxs9("p", { className: "text-sm text-gray-300 truncate mb-1", children: [
+          scene.content.substring(0, 100),
+          scene.content.length > 100 ? "..." : ""
+        ] }),
+        scene.type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ && scene.item && /* @__PURE__ */ jsxs9("p", { className: "text-xs text-yellow-300 mt-1", children: [
+          "\uD68D\uB4DD \uC544\uC774\uD15C: ",
+          scene.item
+        ] }),
+        scene.type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ && scene.newLocationName && /* @__PURE__ */ jsxs9("p", { className: "text-xs text-green-300 mt-1", children: [
+          "\uC0C8 \uC7A5\uC18C: ",
+          scene.newLocationName
+        ] }),
+        scene.type !== "\uC120\uD0DD" /* CHOICE */ && scene.nextSceneId && /* @__PURE__ */ jsxs9("div", { className: "text-xs text-purple-300 mt-1 flex items-center", children: [
+          /* @__PURE__ */ jsx10(LinkIcon, { className: "w-3 h-3 mr-1" }),
+          " \uB2E4\uC74C: ",
+          getSceneTitle(scene.nextSceneId)
+        ] }),
+        scene.type === "\uC120\uD0DD" /* CHOICE */ && scene.choices && scene.choices.map((choice, idx) => /* @__PURE__ */ jsxs9("div", { className: "text-xs text-indigo-300 mt-1 flex items-center", children: [
+          /* @__PURE__ */ jsx10(LinkIcon, { className: "w-3 h-3 mr-1" }),
+          " \uC120\uD0DD ",
+          idx + 1,
+          ': "',
+          choice.text.substring(0, 20),
+          '..." \u2192 ',
+          getSceneTitle(choice.nextSceneId)
+        ] }, choice.id))
+      ]
+    }
+  );
+};
+var StageEditorPanel = ({
+  stage,
+  selectedSceneId,
+  onSelectScene,
+  onAddScene,
+  onUpdateFullScene,
+  // Use this for adding the complete AI scene
+  onDeleteScene,
+  onManageCharacters,
+  worldSettings,
+  onUpdateScene,
+  setIsLoading,
+  setError
+}) => {
+  const [showAddSceneDropdown, setShowAddSceneDropdown] = useState4(false);
+  const sceneTypes = Object.values(SceneType);
+  const [aiSceneType, setAiSceneType] = useState4("\uB098\uB808\uC774\uC158" /* NARRATION */);
+  const [aiScenePrompt, setAiScenePrompt] = useState4("");
+  const handleAddSceneWithType = (type) => {
+    onAddScene(type);
+    setShowAddSceneDropdown(false);
+  };
+  const handleGenerateSceneAI = async () => {
+    if (!worldSettings || !worldSettings.title) {
+      setError("AI\uB85C \uC7A5\uBA74\uC744 \uC0DD\uC131\uD558\uAE30 \uC804\uC5D0 \uC138\uACC4\uAD00 \uC124\uC815\uACFC \uD604\uC7AC \uC2A4\uD14C\uC774\uC9C0 \uC0C1\uC138\uC815\uBCF4\uB97C \uC815\uC758\uD574\uC8FC\uC138\uC694.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const generatedDetails = await generateSceneDetailsWithAI(worldSettings, stage, aiSceneType, aiScenePrompt);
+      const baseNewScene = {
+        id: generateId(),
+        stageId: stage.id,
+        type: aiSceneType,
+        title: generatedDetails.title || `AI \uC0DD\uC131 ${aiSceneType}`,
+        content: generatedDetails.content || "",
+        characterIds: [],
+        choices: void 0,
+        nextSceneId: null,
+        combatDetails: void 0,
+        item: void 0,
+        newLocationName: void 0
+      };
+      if (aiSceneType === "\uC120\uD0DD" /* CHOICE */ && generatedDetails.choices) {
+        baseNewScene.choices = generatedDetails.choices.map((c) => ({ id: generateId(), text: c.text, nextSceneId: null }));
+      }
+      if (aiSceneType === "\uB300\uD654" /* DIALOGUE */ && generatedDetails.speakerCharacterName) {
+        const speaker = stage.characters.find((c) => c.name === generatedDetails.speakerCharacterName && c.type === "NPC" /* NPC */);
+        if (speaker) baseNewScene.characterIds = [speaker.id];
+      }
+      if (aiSceneType === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || aiSceneType === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) {
+        const combatDetails = generatedDetails;
+        baseNewScene.combatDetails = { enemyCharacterIds: [], reward: combatDetails.reward || "" };
+        if (combatDetails.enemyNames) {
+          combatDetails.enemyNames.forEach((name) => {
+            let enemy = stage.characters.find((c) => c.name === name && (c.type === "\uC77C\uBC18 \uBAAC\uC2A4\uD130" /* REGULAR_MONSTER */ || c.type === "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */));
+            if (aiSceneType === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ && !enemy) {
+              enemy = stage.characters.find((c) => c.name === name && c.type === "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */);
+            }
+            if (aiSceneType === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ && !enemy) {
+              enemy = stage.characters.find((c) => c.name === name && c.type === "\uC77C\uBC18 \uBAAC\uC2A4\uD130" /* REGULAR_MONSTER */);
+            }
+            if (enemy) {
+              baseNewScene.combatDetails?.enemyCharacterIds.push(enemy.id);
+            } else {
+              console.warn(`AI\uAC00 \uC81C\uC548\uD55C \uC801 "${name}"(${aiSceneType === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ ? "\uBCF4\uC2A4" : "\uC77C\uBC18"})\uC744(\uB97C) \uC2A4\uD14C\uC774\uC9C0 \uCE90\uB9AD\uD130\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC218\uB3D9\uC73C\uB85C \uCD94\uAC00\uD558\uAC70\uB098 \uD655\uC778\uD574\uC8FC\uC138\uC694.`);
+            }
+          });
+        }
+      }
+      if (aiSceneType === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */) {
+        baseNewScene.item = generatedDetails.itemName || "\uC54C \uC218 \uC5C6\uB294 \uC544\uC774\uD15C";
+      }
+      if (aiSceneType === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */) {
+        baseNewScene.newLocationName = generatedDetails.newLocationName || "\uC54C \uC218 \uC5C6\uB294 \uC7A5\uC18C";
+      }
+      onUpdateFullScene(baseNewScene);
+    } catch (e) {
+      setError(e.message || `AI\uB85C ${aiSceneType} \uC7A5\uBA74 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxs9("div", { className: "h-full flex flex-col", children: [
+    /* @__PURE__ */ jsxs9("div", { className: "mb-6 pb-4 border-b border-gray-600", children: [
+      /* @__PURE__ */ jsxs9("div", { className: "flex justify-between items-center", children: [
+        /* @__PURE__ */ jsx10("h3", { className: "text-3xl font-bold text-purple-400 truncate", children: stage.title }),
+        /* @__PURE__ */ jsx10(Button_default, { onClick: onManageCharacters, variant: "secondary", leftIcon: /* @__PURE__ */ jsx10(UsersIcon, { className: "w-5 h-5" }), children: "\uCE90\uB9AD\uD130 \uAD00\uB9AC" })
+      ] }),
+      /* @__PURE__ */ jsx10("p", { className: "text-gray-400 mt-1", children: stage.settingDescription })
+    ] }),
+    /* @__PURE__ */ jsxs9("div", { className: "mb-4 p-3 bg-gray-800 rounded-md shadow flex flex-col md:flex-row gap-3 items-stretch md:items-end", children: [
+      /* @__PURE__ */ jsxs9("div", { className: "relative flex-shrink-0", children: [
+        /* @__PURE__ */ jsx10(Button_default, { onClick: () => setShowAddSceneDropdown(!showAddSceneDropdown), variant: "primary", leftIcon: /* @__PURE__ */ jsx10(PlusIcon, { className: "w-5 h-5" }), children: "\uC218\uB3D9\uC73C\uB85C \uC7A5\uBA74 \uCD94\uAC00" }),
+        showAddSceneDropdown && /* @__PURE__ */ jsx10("div", { className: "absolute left-0 mt-2 w-48 bg-gray-600 border border-gray-500 rounded-md shadow-lg z-10 py-1", children: sceneTypes.map((type) => (
+          // sceneTypes are now Korean labels directly
+          /* @__PURE__ */ jsx10(
+            "a",
+            {
+              href: "#",
+              onClick: (e) => {
+                e.preventDefault();
+                handleAddSceneWithType(type);
+              },
+              className: "block px-4 py-2 text-sm text-gray-200 hover:bg-purple-500 hover:text-white",
+              children: type
+            },
+            type
+          )
+        )) })
+      ] }),
+      /* @__PURE__ */ jsx10("div", { className: "flex-grow", children: /* @__PURE__ */ jsx10(
+        Select_default,
+        {
+          label: "AI \uC7A5\uBA74 \uC720\uD615",
+          value: aiSceneType,
+          onChange: (e) => setAiSceneType(e.target.value),
+          options: sceneTypes.map((st) => ({ value: st, label: st })),
+          wrapperClassName: "mb-1 md:mb-0"
+        }
+      ) }),
+      /* @__PURE__ */ jsx10(
+        "input",
+        {
+          type: "text",
+          value: aiScenePrompt,
+          onChange: (e) => setAiScenePrompt(e.target.value),
+          placeholder: "\uC120\uD0DD: AI \uD504\uB86C\uD504\uD2B8 \uCEE8\uD14D\uC2A4\uD2B8 (\uC608: '\uAE34\uC7A5\uAC10 \uB118\uCE58\uB294 \uBC1C\uACAC')",
+          className: "flex-grow p-2.5 bg-gray-700 border border-gray-600 rounded-md placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 min-w-[200px]"
+        }
+      ),
+      /* @__PURE__ */ jsx10(
+        Button_default,
+        {
+          onClick: handleGenerateSceneAI,
+          variant: "success",
+          leftIcon: /* @__PURE__ */ jsx10(AISparklesIcon, { className: "w-5 h-5" }),
+          disabled: !worldSettings || !worldSettings.title,
+          className: "w-full md:w-auto flex-shrink-0",
+          children: "AI\uB85C \uC7A5\uBA74 \uC0DD\uC131"
+        }
+      )
+    ] }),
+    (!worldSettings || !worldSettings.title) && /* @__PURE__ */ jsx10("p", { className: "text-xs text-yellow-400 mb-3 -mt-2 text-center md:text-left", children: "AI \uC7A5\uBA74 \uC0DD\uC131\uC744 \uC0AC\uC6A9\uD558\uB824\uBA74 \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uC815\uC758\uD558\uC138\uC694." }),
+    stage.scenes.length === 0 ? /* @__PURE__ */ jsxs9("div", { className: "flex-1 flex flex-col items-center justify-center text-gray-500", children: [
+      /* @__PURE__ */ jsx10(EditIcon, { className: "w-16 h-16 mb-4 opacity-50" }),
+      /* @__PURE__ */ jsx10("p", { className: "text-lg", children: "\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0\uB294 \uC544\uC9C1 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." }),
+      /* @__PURE__ */ jsx10("p", { children: "\uC218\uB3D9\uC73C\uB85C \uC7A5\uBA74\uC744 \uCD94\uAC00\uD558\uAC70\uB098 AI\uB97C \uC0AC\uC6A9\uD558\uC5EC \uC2DC\uC791\uD558\uC138\uC694!" })
+    ] }) : /* @__PURE__ */ jsx10("div", { className: "flex-1 overflow-y-auto space-y-3 pr-1", children: stage.scenes.map((scene) => /* @__PURE__ */ jsx10(
+      SceneCard,
+      {
+        scene,
+        isSelected: selectedSceneId === scene.id,
+        onSelect: () => onSelectScene(scene.id),
+        onDelete: () => onDeleteScene(scene.id),
+        stageCharacters: stage.characters,
+        allScenesInStage: stage.scenes
+      },
+      scene.id
+    )) })
+  ] });
+};
+var StageEditorPanel_default = StageEditorPanel;
+
+// components/SceneEditorPanel.tsx
+import { useState as useState5, useEffect as useEffect2 } from "react";
+import { jsx as jsx11, jsxs as jsxs10 } from "react/jsx-runtime";
+var SceneEditorPanel = ({
+  scene,
+  stage,
+  allScenesInStage,
+  onUpdateScene,
+  worldSettings,
+  setIsLoading,
+  setError
+}) => {
+  const [localScene, setLocalScene] = useState5(scene);
+  useEffect2(() => {
+    setLocalScene(scene);
+  }, [scene]);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setLocalScene((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    setLocalScene((prev) => ({
+      ...prev,
+      type: newType,
+      choices: newType === "\uC120\uD0DD" /* CHOICE */ ? prev.choices || [{ id: generateId(), text: "\uC0C8 \uC120\uD0DD\uC9C0", nextSceneId: null }] : void 0,
+      combatDetails: newType === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || newType === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ ? prev.combatDetails || { enemyCharacterIds: [], reward: "" } : void 0,
+      item: newType === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ ? prev.item || "" : void 0,
+      newLocationName: newType === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ ? prev.newLocationName || "" : void 0,
+      // No specific fields for TOWN yet beyond standard ones.
+      nextSceneId: newType === "\uC120\uD0DD" /* CHOICE */ ? void 0 : prev.nextSceneId || null
+    }));
+  };
+  const handleChoiceTextChange = (choiceId, text) => {
+    setLocalScene((prev) => ({
+      ...prev,
+      choices: prev.choices?.map((c) => c.id === choiceId ? { ...c, text } : c)
+    }));
+  };
+  const handleChoiceLinkChange = (choiceId, nextSceneId) => {
+    setLocalScene((prev) => ({
+      ...prev,
+      choices: prev.choices?.map((c) => c.id === choiceId ? { ...c, nextSceneId } : c)
+    }));
+  };
+  const handleAddChoice = () => {
+    setLocalScene((prev) => ({
+      ...prev,
+      choices: [...prev.choices || [], { id: generateId(), text: "\uC0C8 \uC120\uD0DD\uC9C0", nextSceneId: null }]
+    }));
+  };
+  const handleDeleteChoice = (choiceId) => {
+    setLocalScene((prev) => ({
+      ...prev,
+      choices: prev.choices?.filter((c) => c.id !== choiceId)
+    }));
+  };
+  const handleCombatEnemyChange = (enemyId, add) => {
+    setLocalScene((prev) => ({
+      ...prev,
+      combatDetails: {
+        ...prev.combatDetails || { enemyCharacterIds: [], reward: "" },
+        enemyCharacterIds: add ? [...prev.combatDetails?.enemyCharacterIds || [], enemyId] : (prev.combatDetails?.enemyCharacterIds || []).filter((id) => id !== enemyId)
+      }
+    }));
+  };
+  const availableScenesForLinking = allScenesInStage.filter((s) => s.id !== localScene.id).map((s) => ({ value: s.id, label: s.title }));
+  const availableMonsters = stage.characters.filter((c) => c.type === "\uC77C\uBC18 \uBAAC\uC2A4\uD130" /* REGULAR_MONSTER */ || c.type === "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */).map((c) => ({ value: c.id, label: `${c.name} (${c.type === "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130" /* BOSS_MONSTER */ ? "\uBCF4\uC2A4" : "\uC77C\uBC18"})` }));
+  const handleSaveChanges = () => {
+    onUpdateScene(localScene);
+  };
+  const handleGenerateContentAI = async () => {
+    if (!worldSettings) {
+      setError("AI \uC0DD\uC131\uC744 \uC704\uD574\uC11C\uB294 \uC138\uACC4\uAD00 \uC124\uC815\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const details = await generateSceneDetailsWithAI(worldSettings, stage, localScene.type, `"${localScene.title}" \uC7A5\uBA74\uC758 \uB0B4\uC6A9\uC744 \uC0DD\uC131\uD558\uAC70\uB098 \uAC1C\uC120\uD569\uB2C8\uB2E4.`);
+      let updatedSceneWithAIData = {
+        ...localScene,
+        title: details.title || localScene.title,
+        content: details.content || localScene.content
+      };
+      if (localScene.type === "\uC120\uD0DD" /* CHOICE */ && details.choices) {
+        updatedSceneWithAIData.choices = details.choices.map((c) => ({ id: generateId(), text: c.text, nextSceneId: null }));
+      } else if (localScene.type !== "\uC120\uD0DD" /* CHOICE */) {
+        updatedSceneWithAIData.choices = void 0;
+      }
+      if (localScene.type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || localScene.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) {
+        const combatDetailsFromAI = details;
+        updatedSceneWithAIData.combatDetails = {
+          ...updatedSceneWithAIData.combatDetails || { enemyCharacterIds: [] },
+          reward: combatDetailsFromAI.reward || updatedSceneWithAIData.combatDetails?.reward || ""
+        };
+      } else {
+        updatedSceneWithAIData.combatDetails = void 0;
+      }
+      if (localScene.type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */) {
+        updatedSceneWithAIData.item = details.itemName || localScene.item || "";
+      } else {
+        updatedSceneWithAIData.item = void 0;
+      }
+      if (localScene.type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */) {
+        updatedSceneWithAIData.newLocationName = details.newLocationName || localScene.newLocationName || "";
+      } else {
+        updatedSceneWithAIData.newLocationName = void 0;
+      }
+      setLocalScene(updatedSceneWithAIData);
+    } catch (e) {
+      setError(e.message || "AI\uB85C \uC7A5\uBA74 \uB0B4\uC6A9 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const sceneTypeOptions = Object.values(SceneType).map((st) => ({ value: st, label: st }));
+  return /* @__PURE__ */ jsxs10("div", { className: "p-1 h-full flex flex-col", children: [
+    /* @__PURE__ */ jsxs10("h3", { className: "text-xl font-semibold mb-4 text-purple-400", children: [
+      "\uC7A5\uBA74 \uD3B8\uC9D1: ",
+      scene.title
+    ] }),
+    /* @__PURE__ */ jsxs10("div", { className: "flex-grow overflow-y-auto space-y-4 pr-2", children: [
+      /* @__PURE__ */ jsx11(Input_default, { label: "\uC81C\uBAA9", name: "title", value: localScene.title, onChange: handleInputChange }),
+      /* @__PURE__ */ jsx11(
+        Select_default,
+        {
+          label: "\uC7A5\uBA74 \uC720\uD615",
+          name: "type",
+          value: localScene.type,
+          onChange: handleTypeChange,
+          options: sceneTypeOptions
+        }
+      ),
+      /* @__PURE__ */ jsx11(TextArea_default, { label: "\uB0B4\uC6A9 / \uC124\uBA85", name: "content", value: localScene.content, onChange: handleInputChange, rows: 5 }),
+      /* @__PURE__ */ jsx11(Button_default, { onClick: handleGenerateContentAI, variant: "ghost", size: "sm", leftIcon: /* @__PURE__ */ jsx11(AISparklesIcon, { className: "w-4 h-4" }), disabled: !worldSettings, children: "AI\uB85C \uB0B4\uC6A9 \uC0DD\uC131/\uAC1C\uC120" }),
+      localScene.type !== "\uC120\uD0DD" /* CHOICE */ && /* @__PURE__ */ jsx11(
+        Select_default,
+        {
+          label: "\uB2E4\uC74C \uC7A5\uBA74",
+          name: "nextSceneId",
+          value: localScene.nextSceneId || "",
+          onChange: (e) => setLocalScene((prev) => ({ ...prev, nextSceneId: e.target.value || null })),
+          options: [{ value: "", label: "\uC5C6\uC74C (\uACBD\uB85C \uB05D)" }, ...availableScenesForLinking],
+          placeholder: "\uB2E4\uC74C \uC7A5\uBA74 \uC120\uD0DD",
+          leftIcon: /* @__PURE__ */ jsx11(LinkIcon, { className: "w-4 h-4 text-gray-300" })
+        }
+      ),
+      localScene.type === "\uC120\uD0DD" /* CHOICE */ && /* @__PURE__ */ jsxs10("div", { children: [
+        /* @__PURE__ */ jsx11("h4", { className: "text-md font-semibold mt-3 mb-2 text-gray-300", children: "\uC120\uD0DD\uC9C0" }),
+        localScene.choices?.map((choice, index) => /* @__PURE__ */ jsxs10("div", { className: "p-3 bg-gray-700 rounded-md mb-3 space-y-2", children: [
+          /* @__PURE__ */ jsx11(
+            Input_default,
+            {
+              label: `\uC120\uD0DD\uC9C0 ${index + 1} \uD14D\uC2A4\uD2B8`,
+              value: choice.text,
+              onChange: (e) => handleChoiceTextChange(choice.id, e.target.value)
+            }
+          ),
+          /* @__PURE__ */ jsx11(
+            Select_default,
+            {
+              label: "\uC774\uC5B4\uC9C0\uB294 \uC7A5\uBA74",
+              value: choice.nextSceneId || "",
+              onChange: (e) => handleChoiceLinkChange(choice.id, e.target.value || null),
+              options: [{ value: "", label: "\uC5C6\uC74C (\uACBD\uB85C \uB05D)" }, ...availableScenesForLinking],
+              placeholder: "\uC774\uC5B4\uC9C0\uB294 \uC7A5\uBA74 \uC120\uD0DD"
+            }
+          ),
+          /* @__PURE__ */ jsx11(Button_default, { onClick: () => handleDeleteChoice(choice.id), variant: "danger", size: "sm", leftIcon: /* @__PURE__ */ jsx11(TrashIcon, { className: "w-4 h-4" }), children: "\uC120\uD0DD\uC9C0 \uC0AD\uC81C" })
+        ] }, choice.id)),
+        /* @__PURE__ */ jsx11(Button_default, { onClick: handleAddChoice, variant: "secondary", size: "sm", leftIcon: /* @__PURE__ */ jsx11(PlusIcon, { className: "w-4 h-4" }), children: "\uC120\uD0DD\uC9C0 \uCD94\uAC00" })
+      ] }),
+      localScene.type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ && /* @__PURE__ */ jsx11(Input_default, { label: "\uC544\uC774\uD15C \uC774\uB984", name: "item", value: localScene.item || "", onChange: handleInputChange, placeholder: "\uC608: \uD68C\uBCF5 \uBB3C\uC57D" }),
+      localScene.type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ && /* @__PURE__ */ jsx11(Input_default, { label: "\uC0C8 \uC7A5\uC18C \uC774\uB984", name: "newLocationName", value: localScene.newLocationName || "", onChange: handleInputChange, placeholder: "\uC608: \uBE44\uBC00\uC758 \uC232" }),
+      (localScene.type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || localScene.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */) && /* @__PURE__ */ jsxs10("div", { children: [
+        /* @__PURE__ */ jsx11("h4", { className: "text-md font-semibold mt-3 mb-2 text-gray-300", children: localScene.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ ? "\uBCF4\uC2A4 \uC804\uD22C \uC0C1\uC138\uC815\uBCF4" : "\uC77C\uBC18 \uC804\uD22C \uC0C1\uC138\uC815\uBCF4" }),
+        /* @__PURE__ */ jsx11(
+          TextArea_default,
+          {
+            label: "\uBCF4\uC0C1 \uC124\uBA85",
+            name: "reward",
+            value: localScene.combatDetails?.reward || "",
+            onChange: (e) => setLocalScene((prev) => ({ ...prev, combatDetails: { ...prev.combatDetails || { enemyCharacterIds: [] }, reward: e.target.value } })),
+            rows: 2,
+            placeholder: "\uC608: 100 \uACE8\uB4DC, \uB179\uC2A8 \uAC80"
+          }
+        ),
+        /* @__PURE__ */ jsxs10("div", { className: "mt-2", children: [
+          /* @__PURE__ */ jsx11("label", { className: "block text-sm font-medium text-gray-300 mb-1", children: "\uC801" }),
+          availableMonsters.length === 0 && /* @__PURE__ */ jsx11("p", { className: "text-xs text-gray-400", children: "\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0 \uC815\uC758\uB41C \uBAAC\uC2A4\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. '\uCE90\uB9AD\uD130 \uAD00\uB9AC'\uB97C \uD1B5\uD574 \uCD94\uAC00\uD558\uC138\uC694." }),
+          /* @__PURE__ */ jsx11("div", { className: "max-h-32 overflow-y-auto space-y-1 bg-gray-700 p-2 rounded", children: availableMonsters.map((monster) => /* @__PURE__ */ jsxs10("div", { className: "flex items-center", children: [
+            /* @__PURE__ */ jsx11(
+              "input",
+              {
+                type: "checkbox",
+                id: `enemy-${monster.value}`,
+                className: "mr-2 h-4 w-4 text-purple-600 bg-gray-600 border-gray-500 rounded focus:ring-purple-500",
+                checked: localScene.combatDetails?.enemyCharacterIds.includes(monster.value.toString()),
+                onChange: (e) => handleCombatEnemyChange(monster.value.toString(), e.target.checked)
+              }
+            ),
+            /* @__PURE__ */ jsx11("label", { htmlFor: `enemy-${monster.value}`, className: "text-sm text-gray-200", children: monster.label })
+          ] }, monster.value)) })
+        ] })
+      ] }),
+      (localScene.type === "\uB300\uD654" /* DIALOGUE */ || localScene.type === "\uB098\uB808\uC774\uC158" /* NARRATION */ || localScene.type === "\uB9C8\uC744" /* TOWN */) && stage.characters.filter((c) => c.type === "NPC" /* NPC */).length > 0 && // For Town, characterIds might be used for prominent NPCs or town elder, etc. Not strictly a "speaker" always.
+      // Keeping it generic for now.
+      /* @__PURE__ */ jsxs10("div", { children: [
+        /* @__PURE__ */ jsx11("h4", { className: "text-md font-semibold mt-3 mb-1 text-gray-300", children: "\uAD00\uB828 NPC (\uC120\uD0DD)" }),
+        /* @__PURE__ */ jsx11(
+          Select_default,
+          {
+            label: "NPC \uC120\uD0DD",
+            value: localScene.characterIds?.[0] || "",
+            onChange: (e) => setLocalScene((prev) => ({ ...prev, characterIds: e.target.value ? [e.target.value] : [] })),
+            options: [{ value: "", label: "\uC5C6\uC74C" }, ...stage.characters.filter((c) => c.type === "NPC" /* NPC */).map((c) => ({ value: c.id, label: c.name }))],
+            placeholder: "\uAD00\uB828 NPC \uC120\uD0DD"
+          }
+        ),
+        /* @__PURE__ */ jsx11("p", { className: "text-xs text-gray-400 mt-1", children: "\uB300\uD654 \uC7A5\uBA74\uC758 \uACBD\uC6B0 \uD654\uC790, \uB9C8\uC744 \uC7A5\uBA74\uC758 \uACBD\uC6B0 \uC8FC\uC694 NPC \uB4F1\uC744 \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsx11("div", { className: "mt-auto pt-4 border-t border-gray-700", children: /* @__PURE__ */ jsx11(Button_default, { onClick: handleSaveChanges, variant: "success", className: "w-full", leftIcon: /* @__PURE__ */ jsx11(SaveIcon, { className: "w-5 h-5" }), children: "\uC7A5\uBA74 \uBCC0\uACBD\uC0AC\uD56D \uC800\uC7A5" }) })
+  ] });
+};
+var SceneEditorPanel_default = SceneEditorPanel;
+
+// components/CharacterManagerModal.tsx
+import { useState as useState6, useEffect as useEffect3 } from "react";
+import { Fragment as Fragment3, jsx as jsx12, jsxs as jsxs11 } from "react/jsx-runtime";
+var CharacterEditor = ({ character: initialCharacter, onSave, onCancel, stage, worldSettings, setIsLoading, setError }) => {
+  const [character, setCharacter] = useState6(initialCharacter);
+  const [isGeneratingDetailsAi, setIsGeneratingDetailsAi] = useState6(false);
+  useEffect3(() => {
+    setCharacter(initialCharacter);
+  }, [initialCharacter]);
+  const handleChange = (e) => {
+    setCharacter({ ...character, [e.target.name]: e.target.value });
+  };
+  const handleGenerateDetailsAI = async () => {
+    if (!worldSettings || !character.type) {
+      setError("AI \uC0DD\uC131\uC744 \uC704\uD574\uC11C\uB294 \uC138\uACC4\uAD00 \uC124\uC815\uACFC \uCE90\uB9AD\uD130 \uC720\uD615\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    setIsGeneratingDetailsAi(true);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const suggestion = await generateCharacterWithAI(worldSettings, stage, character.type, `"${character.name || "(\uC0C8 \uCE90\uB9AD\uD130)"}"\uB77C\uB294 \uC774\uB984\uC758 ${character.type}\uC5D0 \uB300\uD55C \uC0C1\uC138 \uC815\uBCF4\uB97C \uC0DD\uC131\uD569\uB2C8\uB2E4.`);
+      setCharacter((prev) => ({
+        ...prev,
+        name: suggestion.name || prev.name,
+        description: suggestion.description || "",
+        dialogueSeed: character.type === "NPC" /* NPC */ ? suggestion.dialogueSeed || "" : void 0
+      }));
+    } catch (e) {
+      setError(e.message || "AI\uB85C \uCE90\uB9AD\uD130 \uC0C1\uC138\uC815\uBCF4 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    } finally {
+      setIsLoading(false);
+      setIsGeneratingDetailsAi(false);
+    }
+  };
+  const handleFinalSave = () => {
+    if (!character.name || !character.type || !character.description) {
+      alert("\uC774\uB984, \uC720\uD615, \uC124\uBA85\uC740 \uD544\uC218\uC785\uB2C8\uB2E4.");
+      return;
+    }
+    onSave({
+      id: character.id || generateId(),
+      name: character.name,
+      type: character.type,
+      description: character.description,
+      dialogueSeed: character.dialogueSeed
+    });
+  };
+  return /* @__PURE__ */ jsxs11("div", { className: "space-y-4 p-1", children: [
+    /* @__PURE__ */ jsx12(Input_default, { label: "\uC774\uB984", name: "name", value: character.name || "", onChange: handleChange }),
+    /* @__PURE__ */ jsx12(
+      Select_default,
+      {
+        label: "\uC720\uD615",
+        name: "type",
+        value: character.type || "",
+        onChange: handleChange,
+        options: Object.values(CharacterType).map((ct) => ({ value: ct, label: ct })),
+        placeholder: "\uC720\uD615 \uC120\uD0DD"
+      }
+    ),
+    /* @__PURE__ */ jsx12(TextArea_default, { label: "\uC124\uBA85", name: "description", value: character.description || "", onChange: handleChange, rows: 3 }),
+    character.type === "NPC" /* NPC */ && /* @__PURE__ */ jsx12(Input_default, { label: "\uB300\uD654 \uC2DC\uB4DC (NPC)", name: "dialogueSeed", value: character.dialogueSeed || "", onChange: handleChange, placeholder: "\uC608: \uACE0\uB300 \uC720\uC801\uC5D0 \uB300\uD55C \uC18C\uBB38" }),
+    /* @__PURE__ */ jsx12(
+      Button_default,
+      {
+        onClick: handleGenerateDetailsAI,
+        variant: "ghost",
+        size: "sm",
+        leftIcon: !isGeneratingDetailsAi ? /* @__PURE__ */ jsx12(AISparklesIcon, { className: "w-4 h-4" }) : null,
+        disabled: !worldSettings || !character.type || isGeneratingDetailsAi,
+        loading: isGeneratingDetailsAi,
+        children: "AI\uB85C \uC0C1\uC138\uC815\uBCF4 \uC0DD\uC131/\uAC1C\uC120"
+      }
+    ),
+    /* @__PURE__ */ jsxs11("div", { className: "flex justify-end space-x-2 pt-2", children: [
+      /* @__PURE__ */ jsx12(Button_default, { onClick: onCancel, variant: "secondary", children: "\uCDE8\uC18C" }),
+      /* @__PURE__ */ jsx12(Button_default, { onClick: handleFinalSave, variant: "primary", children: "\uCE90\uB9AD\uD130 \uC800\uC7A5" })
+    ] })
+  ] });
+};
+var CharacterManagerModal = ({
+  isOpen,
+  onClose,
+  stage,
+  onUpdateCharacters,
+  worldSettings,
+  setIsLoading,
+  setError
+}) => {
+  const [characters, setCharacters] = useState6(stage.characters);
+  const [editingCharacter, setEditingCharacter] = useState6(null);
+  const [showAiForm, setShowAiForm] = useState6(false);
+  const [aiCharacterType, setAiCharacterType] = useState6("NPC" /* NPC */);
+  const [aiCharacterPrompt, setAiCharacterPrompt] = useState6("");
+  const [isCreatingAiCharacter, setIsCreatingAiCharacter] = useState6(false);
+  useEffect3(() => {
+    setCharacters(stage.characters);
+    if (!isOpen) {
+      setIsCreatingAiCharacter(false);
+      setShowAiForm(false);
+    }
+  }, [stage.characters, isOpen]);
+  const handleSaveCharacter = (charToSave) => {
+    let updatedChars;
+    if (characters.find((c) => c.id === charToSave.id)) {
+      updatedChars = characters.map((c) => c.id === charToSave.id ? charToSave : c);
+    } else {
+      updatedChars = [...characters, charToSave];
+    }
+    setCharacters(updatedChars);
+    onUpdateCharacters(updatedChars);
+    setEditingCharacter(null);
+  };
+  const handleDeleteCharacter = (id) => {
+    const updatedChars = characters.filter((c) => c.id !== id);
+    setCharacters(updatedChars);
+    onUpdateCharacters(updatedChars);
+  };
+  const handleGenerateCharacterAI = async () => {
+    if (!worldSettings) {
+      setError("AI\uB85C \uCE90\uB9AD\uD130\uB97C \uC0DD\uC131\uD558\uB824\uBA74 \uC138\uACC4\uAD00 \uC124\uC815\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    setIsCreatingAiCharacter(true);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const suggestion = await generateCharacterWithAI(worldSettings, stage, aiCharacterType, aiCharacterPrompt);
+      const newChar = {
+        id: generateId(),
+        name: suggestion.name,
+        type: aiCharacterType,
+        description: suggestion.description,
+        dialogueSeed: aiCharacterType === "NPC" /* NPC */ ? suggestion.dialogueSeed : void 0
+      };
+      const updatedChars = [...characters, newChar];
+      setCharacters(updatedChars);
+      onUpdateCharacters(updatedChars);
+      setAiCharacterPrompt("");
+      setShowAiForm(false);
+    } catch (e) {
+      setError(e.message || "AI\uB85C \uCE90\uB9AD\uD130 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    } finally {
+      setIsLoading(false);
+      setIsCreatingAiCharacter(false);
+    }
+  };
+  return /* @__PURE__ */ jsx12(Modal_default, { isOpen, onClose, title: `${stage.title} \uCE90\uB9AD\uD130 \uAD00\uB9AC`, size: "xl", children: editingCharacter ? /* @__PURE__ */ jsx12(
+    CharacterEditor,
+    {
+      character: editingCharacter,
+      onSave: handleSaveCharacter,
+      onCancel: () => setEditingCharacter(null),
+      stage,
+      worldSettings,
+      setIsLoading,
+      setError
+    }
+  ) : /* @__PURE__ */ jsxs11(Fragment3, { children: [
+    /* @__PURE__ */ jsxs11("div", { className: "mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3", children: [
+      /* @__PURE__ */ jsx12(Button_default, { onClick: () => setEditingCharacter({ type: "NPC" /* NPC */ }), variant: "primary", leftIcon: /* @__PURE__ */ jsx12(PlusIcon, { className: "w-5 h-5" }), children: "\uC218\uB3D9\uC73C\uB85C \uCE90\uB9AD\uD130 \uCD94\uAC00" }),
+      /* @__PURE__ */ jsx12(
+        Button_default,
+        {
+          onClick: () => setShowAiForm(!showAiForm),
+          variant: "success",
+          leftIcon: /* @__PURE__ */ jsx12(AISparklesIcon, { className: "w-5 h-5" }),
+          disabled: isCreatingAiCharacter,
+          children: showAiForm ? "AI \uC0DD\uC131 \uCDE8\uC18C" : "AI\uB85C \uCE90\uB9AD\uD130 \uC0DD\uC131"
+        }
+      )
+    ] }),
+    showAiForm && /* @__PURE__ */ jsxs11("div", { className: "p-3 bg-gray-700 rounded-md mb-4 space-y-3", children: [
+      /* @__PURE__ */ jsx12(
+        Select_default,
+        {
+          label: "AI \uCE90\uB9AD\uD130 \uC720\uD615",
+          value: aiCharacterType,
+          onChange: (e) => setAiCharacterType(e.target.value),
+          options: Object.values(CharacterType).map((ct) => ({ value: ct, label: ct })),
+          disabled: isCreatingAiCharacter
+        }
+      ),
+      /* @__PURE__ */ jsx12(
+        Input_default,
+        {
+          label: "\uC120\uD0DD: \uD2B9\uC815 AI \uD504\uB86C\uD504\uD2B8",
+          value: aiCharacterPrompt,
+          onChange: (e) => setAiCharacterPrompt(e.target.value),
+          placeholder: "\uC608: '\uC2EC\uC220\uAD82\uC740 \uB299\uC740 \uC0C1\uC810 \uC8FC\uC778'",
+          disabled: isCreatingAiCharacter
+        }
+      ),
+      /* @__PURE__ */ jsx12(
+        Button_default,
+        {
+          onClick: handleGenerateCharacterAI,
+          disabled: !worldSettings || isCreatingAiCharacter,
+          loading: isCreatingAiCharacter,
+          children: "\uC0DD\uC131"
+        }
+      ),
+      !worldSettings && /* @__PURE__ */ jsx12("p", { className: "text-xs text-yellow-400", children: "AI\uC5D0\uB294 \uC138\uACC4\uAD00 \uC124\uC815\uC774 \uD544\uC694\uD569\uB2C8\uB2E4." })
+    ] }),
+    characters.length === 0 && !editingCharacter && !showAiForm && /* @__PURE__ */ jsx12("p", { className: "text-gray-400 text-center py-4", children: "\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0 \uC544\uC9C1 \uC815\uC758\uB41C \uCE90\uB9AD\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4." }),
+    /* @__PURE__ */ jsx12("ul", { className: "space-y-2 max-h-[50vh] overflow-y-auto", children: characters.map((char) => /* @__PURE__ */ jsxs11("li", { className: "p-3 bg-gray-700 rounded-md flex justify-between items-center group", children: [
+      /* @__PURE__ */ jsxs11("div", { children: [
+        /* @__PURE__ */ jsxs11("p", { className: "font-semibold text-purple-300", children: [
+          char.name,
+          " ",
+          /* @__PURE__ */ jsxs11("span", { className: "text-xs text-gray-400", children: [
+            "(",
+            char.type,
+            ")"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx12("p", { className: "text-sm text-gray-300 truncate max-w-md", children: char.description })
+      ] }),
+      /* @__PURE__ */ jsxs11("div", { className: "flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity", children: [
+        /* @__PURE__ */ jsx12(Button_default, { onClick: () => setEditingCharacter(char), variant: "ghost", size: "sm", title: "\uD3B8\uC9D1", disabled: isCreatingAiCharacter, children: /* @__PURE__ */ jsx12(EditIcon, { className: "w-4 h-4" }) }),
+        /* @__PURE__ */ jsx12(Button_default, { onClick: () => handleDeleteCharacter(char.id), variant: "ghost", size: "sm", title: "\uC0AD\uC81C", disabled: isCreatingAiCharacter, children: /* @__PURE__ */ jsx12(TrashIcon, { className: "w-4 h-4 text-red-400" }) })
+      ] })
+    ] }, char.id)) })
+  ] }) });
+};
+var CharacterManagerModal_default = CharacterManagerModal;
+
+// components/ScriptPlayerModal.tsx
+import { useState as useState7, useEffect as useEffect4, useCallback } from "react";
+import { jsx as jsx13, jsxs as jsxs12 } from "react/jsx-runtime";
+var ScriptPlayerModal = ({
+  isOpen,
+  onClose,
+  project,
+  startStageId
+}) => {
+  const [currentStage, setCurrentStage] = useState7(null);
+  const [currentScene, setCurrentScene] = useState7(null);
+  const [errorMessage, setErrorMessage] = useState7(null);
+  const [townServiceMessage, setTownServiceMessage] = useState7(null);
+  const [isOfferingRegularCombatRepeat, setIsOfferingRegularCombatRepeat] = useState7(null);
+  const findSceneById = useCallback((sceneId, stage) => {
+    return stage?.scenes.find((s) => s.id === sceneId) || null;
+  }, []);
+  const isLastSceneOfProject = useCallback((sceneToCheck, stage, proj) => {
+    if (!sceneToCheck || !stage) return false;
+    const currentStageIndex = proj.stages.findIndex((s) => s.id === stage.id);
+    if (currentStageIndex === -1) return false;
+    const isLastStage = currentStageIndex === proj.stages.length - 1;
+    if (!isLastStage) return false;
+    return stage.scenes.length > 0 && stage.scenes[stage.scenes.length - 1].id === sceneToCheck.id;
+  }, []);
+  useEffect4(() => {
+    if (isOpen && startStageId && project) {
+      const stage = project.stages.find((s) => s.id === startStageId);
+      if (stage) {
+        setCurrentStage(stage);
+        if (stage.scenes.length > 0) {
+          setCurrentScene(stage.scenes[0]);
+          setErrorMessage(null);
+        } else {
+          setCurrentScene(null);
+          setErrorMessage("\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0\uB294 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+      } else {
+        setCurrentStage(null);
+        setCurrentScene(null);
+        setErrorMessage("\uD50C\uB808\uC774\uD560 \uC2A4\uD14C\uC774\uC9C0\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      }
+    } else {
+      setCurrentStage(null);
+      setCurrentScene(null);
+      setErrorMessage(null);
+      setIsOfferingRegularCombatRepeat(null);
+      setTownServiceMessage(null);
+    }
+  }, [isOpen, startStageId, project]);
+  const executeEndOfPathLogic = useCallback((sceneThatEnded) => {
+    if (sceneThatEnded && sceneThatEnded.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ && currentStage && currentStage.scenes.length > 0 && currentStage.scenes[currentStage.scenes.length - 1].id === sceneThatEnded.id) {
+      const currentStageIndex = project.stages.findIndex((s) => s.id === currentStage.id);
+      if (currentStageIndex !== -1 && currentStageIndex < project.stages.length - 1) {
+        const nextStage = project.stages[currentStageIndex + 1];
+        setCurrentStage(nextStage);
+        if (nextStage.scenes.length > 0) {
+          setCurrentScene(nextStage.scenes[0]);
+          setErrorMessage(null);
+        } else {
+          setCurrentScene(null);
+          setErrorMessage(`\uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0 "${nextStage.title}"\uC5D0\uB294 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+        }
+      } else {
+        setCurrentScene(null);
+        setErrorMessage(null);
+      }
+    } else {
+      setCurrentScene(null);
+      setErrorMessage(null);
+    }
+    setTownServiceMessage(null);
+    setIsOfferingRegularCombatRepeat(null);
+  }, [project, currentStage, setCurrentStage, setCurrentScene, setErrorMessage, setTownServiceMessage, setIsOfferingRegularCombatRepeat]);
+  const handleDefeat = useCallback(() => {
+    if (!currentStage || !currentScene) {
+      setErrorMessage("\uD328\uBC30 \uCC98\uB9AC\uB97C \uD560 \uD604\uC7AC \uC7A5\uBA74\uC774\uB098 \uC2A4\uD14C\uC774\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      return;
+    }
+    setIsOfferingRegularCombatRepeat(null);
+    setTownServiceMessage(null);
+    setErrorMessage(null);
+    const scenesInCurrentStage = currentStage.scenes;
+    const currentSceneIndex = scenesInCurrentStage.findIndex((s) => s.id === currentScene.id);
+    if (currentSceneIndex === -1) {
+      setErrorMessage("\uD604\uC7AC \uC7A5\uBA74\uC744 \uC2A4\uD14C\uC774\uC9C0\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      setCurrentScene(null);
+      return;
+    }
+    for (let i = currentSceneIndex - 1; i >= 0; i--) {
+      if (scenesInCurrentStage[i].type === "\uB9C8\uC744" /* TOWN */) {
+        setCurrentScene(scenesInCurrentStage[i]);
+        return;
+      }
+    }
+    if (scenesInCurrentStage.length > 0) {
+      setCurrentScene(scenesInCurrentStage[0]);
+    } else {
+      setErrorMessage("\uD604\uC7AC \uC2A4\uD14C\uC774\uC9C0\uC5D0 \uB3CC\uC544\uAC08 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      setCurrentScene(null);
+    }
+  }, [currentStage, currentScene, setCurrentScene, setErrorMessage, setIsOfferingRegularCombatRepeat, setTownServiceMessage]);
+  const handleNavigate = useCallback((navigateToSceneId) => {
+    setTownServiceMessage(null);
+    setErrorMessage(null);
+    if (isOfferingRegularCombatRepeat) {
+      const sceneThatOfferedRepeat = isOfferingRegularCombatRepeat.scene;
+      const originalNextSceneIdAfterRepeat = isOfferingRegularCombatRepeat.originalNextSceneId;
+      setIsOfferingRegularCombatRepeat(null);
+      if (navigateToSceneId === "RETRY_COMBAT") {
+        setCurrentScene(null);
+        setTimeout(() => setCurrentScene(sceneThatOfferedRepeat), 0);
+        return;
+      } else if (navigateToSceneId === "PROCEED_FROM_COMBAT") {
+        if (originalNextSceneIdAfterRepeat) {
+          const nextSceneObject2 = findSceneById(originalNextSceneIdAfterRepeat, currentStage);
+          if (nextSceneObject2) {
+            setCurrentScene(nextSceneObject2);
+          } else {
+            setCurrentScene(null);
+            setErrorMessage(`\uB2E4\uC74C \uC7A5\uBA74\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4 (ID: ${originalNextSceneIdAfterRepeat}). \uACBD\uB85C\uAC00 \uB04A\uACBC\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`);
+          }
+        } else {
+          executeEndOfPathLogic(sceneThatOfferedRepeat);
+        }
+        return;
+      }
+    }
+    if (currentScene && currentScene.type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ && !isLastSceneOfProject(currentScene, currentStage, project) && (navigateToSceneId === void 0 || navigateToSceneId === currentScene.nextSceneId)) {
+      setIsOfferingRegularCombatRepeat({
+        scene: currentScene,
+        originalNextSceneId: currentScene.nextSceneId
+      });
+      return;
+    }
+    let actualNextSceneId;
+    if (navigateToSceneId !== void 0) {
+      actualNextSceneId = navigateToSceneId;
+    } else if (currentScene && currentScene.type !== "\uC120\uD0DD" /* CHOICE */) {
+      actualNextSceneId = currentScene.nextSceneId;
+    } else {
+      actualNextSceneId = null;
+    }
+    if (!actualNextSceneId) {
+      executeEndOfPathLogic(currentScene);
+      return;
+    }
+    const nextSceneObject = findSceneById(actualNextSceneId, currentStage);
+    if (nextSceneObject) {
+      setCurrentScene(nextSceneObject);
+    } else {
+      setCurrentScene(null);
+      setErrorMessage(`\uB2E4\uC74C \uC7A5\uBA74\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4 (ID: ${actualNextSceneId}). \uACBD\uB85C\uAC00 \uB04A\uACBC\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`);
+    }
+  }, [
+    currentScene,
+    currentStage,
+    project,
+    isOfferingRegularCombatRepeat,
+    findSceneById,
+    isLastSceneOfProject,
+    executeEndOfPathLogic,
+    setIsOfferingRegularCombatRepeat,
+    setCurrentScene,
+    setErrorMessage,
+    setTownServiceMessage
+  ]);
+  const getCharacterName = (characterId) => {
+    return currentStage?.characters.find((c) => c.id === characterId)?.name || "\uC54C \uC218 \uC5C6\uB294 \uCE90\uB9AD\uD130";
+  };
+  const handleTownService = (service) => {
+    if (service === "shop") {
+      setTownServiceMessage("\uC0C1\uC810 \uAE30\uB2A5\uC740 \uC544\uC9C1 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4.");
+    } else if (service === "inn") {
+      setTownServiceMessage("\uC5EC\uAD00\uC5D0\uC11C \uD3B8\uC548\uD558\uAC8C \uD734\uC2DD\uC744 \uCDE8\uD588\uC2B5\uB2C8\uB2E4. (HP/MP \uD68C\uBCF5 \uB4F1 \uD6A8\uACFC\uB294 \uBBF8\uAD6C\uD604)");
+    }
+  };
+  const renderSceneContent = () => {
+    if (isOfferingRegularCombatRepeat) {
+      const combatScene = isOfferingRegularCombatRepeat.scene;
+      return /* @__PURE__ */ jsxs12("div", { className: "space-y-4 p-2 text-center", children: [
+        /* @__PURE__ */ jsxs12("h3", { className: "text-2xl font-semibold text-purple-300 mb-1", children: [
+          combatScene.title,
+          " \uC644\uB8CC!"
+        ] }),
+        /* @__PURE__ */ jsxs12("div", { className: "text-gray-200 text-lg leading-relaxed whitespace-pre-wrap bg-gray-700 p-4 rounded-md min-h-[50px]", children: [
+          "\uC804\uD22C\uC5D0\uC11C \uC2B9\uB9AC\uD588\uC2B5\uB2C8\uB2E4!",
+          combatScene.combatDetails?.reward && /* @__PURE__ */ jsxs12("p", { className: "text-sm text-yellow-300 mt-2", children: [
+            "\uD68D\uB4DD \uBCF4\uC0C1: ",
+            combatScene.combatDetails.reward
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs12("div", { className: "mt-8 pt-4 border-t border-gray-600 space-y-3", children: [
+          /* @__PURE__ */ jsx13(
+            Button_default,
+            {
+              onClick: () => handleNavigate("RETRY_COMBAT"),
+              variant: "primary",
+              className: "w-full py-3",
+              children: "\uB2E4\uC2DC \uC2F8\uC6B0\uAE30"
+            }
+          ),
+          /* @__PURE__ */ jsx13(
+            Button_default,
+            {
+              onClick: () => handleNavigate("PROCEED_FROM_COMBAT"),
+              variant: "secondary",
+              className: "w-full py-3",
+              children: "\uACC4\uC18D \uC9C4\uD589"
+            }
+          )
+        ] })
+      ] });
+    }
+    if (!currentScene || !currentStage) {
+      return /* @__PURE__ */ jsxs12("div", { className: "text-center py-10", children: [
+        errorMessage ? /* @__PURE__ */ jsx13("p", { className: "text-red-400 text-lg", children: errorMessage }) : currentStage && currentStage.scenes.length === 0 ? /* @__PURE__ */ jsx13("p", { className: "text-yellow-400 text-lg", children: "\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0\uB294 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." }) : !currentStage ? /* @__PURE__ */ jsx13("p", { className: "text-gray-400 text-lg", children: "\uD50C\uB808\uC774\uD560 \uC2A4\uD14C\uC774\uC9C0\uB97C \uBD88\uB7EC\uC624\uB294 \uC911..." }) : /* @__PURE__ */ jsx13("p", { className: "text-yellow-400 font-semibold py-3 text-lg", children: "\uACBD\uB85C\uC758 \uB05D\uC785\uB2C8\uB2E4. \uD50C\uB808\uC774\uD574\uC8FC\uC154\uC11C \uAC10\uC0AC\uD569\uB2C8\uB2E4!" }),
+        (errorMessage || !currentScene && !isOfferingRegularCombatRepeat) && // Show "End Playtest" if error or true end.
+        /* @__PURE__ */ jsx13(Button_default, { onClick: onClose, variant: "danger", className: "w-1/2 mx-auto mt-6", children: "\uD50C\uB808\uC774\uD14C\uC2A4\uD2B8 \uC885\uB8CC" })
+      ] });
+    }
+    let speakerName = null;
+    if (currentScene.type === "\uB300\uD654" /* DIALOGUE */ && currentScene.characterIds && currentScene.characterIds.length > 0) {
+      const speaker = currentStage.characters.find((c) => c.id === currentScene.characterIds[0]);
+      if (speaker) speakerName = speaker.name;
+    }
+    const isCombatScene = currentScene.type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || currentScene.type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */;
+    return /* @__PURE__ */ jsxs12("div", { className: "space-y-4 p-2", children: [
+      /* @__PURE__ */ jsx13("h3", { className: "text-2xl font-semibold text-purple-300 mb-1", children: currentScene.title }),
+      /* @__PURE__ */ jsxs12("p", { className: "text-sm text-gray-500 italic", children: [
+        "(",
+        currentScene.type,
+        ")"
+      ] }),
+      speakerName && /* @__PURE__ */ jsxs12("p", { className: "text-lg font-semibold text-yellow-400", children: [
+        speakerName,
+        ":"
+      ] }),
+      /* @__PURE__ */ jsx13("div", { className: "text-gray-200 text-lg leading-relaxed whitespace-pre-wrap bg-gray-700 p-4 rounded-md min-h-[100px]", children: currentScene.content }),
+      townServiceMessage && /* @__PURE__ */ jsx13("div", { className: "mt-2 p-3 bg-blue-800 text-blue-100 rounded-md text-center", children: townServiceMessage }),
+      currentScene.type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ && currentScene.item && /* @__PURE__ */ jsxs12("p", { className: "text-md text-green-400 mt-2", children: [
+        "\u2728 ",
+        /* @__PURE__ */ jsx13("strong", { children: "\uC544\uC774\uD15C \uD68D\uB4DD:" }),
+        " ",
+        currentScene.item
+      ] }),
+      currentScene.type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ && currentScene.newLocationName && /* @__PURE__ */ jsxs12("p", { className: "text-md text-blue-400 mt-2", children: [
+        "\u{1F5FA}\uFE0F ",
+        /* @__PURE__ */ jsx13("strong", { children: "\uC7A5\uC18C \uBCC0\uACBD:" }),
+        " ",
+        currentScene.newLocationName,
+        "(\uC73C)\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4."
+      ] }),
+      isCombatScene && currentScene.combatDetails && /* @__PURE__ */ jsxs12("div", { className: "mt-3 p-3 bg-gray-750 rounded", children: [
+        /* @__PURE__ */ jsx13("h4", { className: "text-md font-semibold text-red-400 mb-1", children: "\u2694\uFE0F \uC804\uD22C \uBC1C\uC0DD!" }),
+        /* @__PURE__ */ jsxs12("p", { className: "text-sm text-gray-300", children: [
+          /* @__PURE__ */ jsx13("strong", { children: "\uC801:" }),
+          " ",
+          currentScene.combatDetails.enemyCharacterIds.map((id) => getCharacterName(id)).join(", ") || "\uC815\uC758\uB418\uC9C0 \uC54A\uC74C"
+        ] }),
+        currentScene.combatDetails.reward && /* @__PURE__ */ jsxs12("p", { className: "text-sm text-gray-300", children: [
+          /* @__PURE__ */ jsx13("strong", { children: "\uBCF4\uC0C1 (\uC608\uC0C1):" }),
+          " ",
+          currentScene.combatDetails.reward
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx13("div", { className: "mt-8 pt-4 border-t border-gray-600", children: currentScene.type === "\uC120\uD0DD" /* CHOICE */ && currentScene.choices && currentScene.choices.length > 0 ? /* @__PURE__ */ jsx13("div", { className: "space-y-3", children: currentScene.choices.map((choice) => /* @__PURE__ */ jsx13(
+        Button_default,
+        {
+          onClick: () => handleNavigate(choice.nextSceneId),
+          variant: "secondary",
+          className: "w-full text-left justify-start py-3",
+          children: choice.text
+        },
+        choice.id
+      )) }) : currentScene.type === "\uB9C8\uC744" /* TOWN */ ? /* @__PURE__ */ jsxs12("div", { className: "space-y-3", children: [
+        /* @__PURE__ */ jsx13(Button_default, { onClick: () => handleTownService("shop"), variant: "success", className: "w-full py-3", children: "\uC0C1\uC810 \uC774\uC6A9" }),
+        /* @__PURE__ */ jsx13(Button_default, { onClick: () => handleTownService("inn"), variant: "info", className: "w-full py-3", children: "\uC5EC\uAD00\uC5D0\uC11C \uD734\uC2DD" }),
+        /* @__PURE__ */ jsx13(
+          Button_default,
+          {
+            onClick: () => handleNavigate(currentScene.nextSceneId),
+            variant: "primary",
+            className: "w-full py-3 mt-2",
+            children: currentScene.nextSceneId ? "\uB9C8\uC744 \uBC16\uC73C\uB85C \uB098\uAC00\uAE30 (\uB2E4\uC74C)" : "\uACC4\uC18D (\uACBD\uB85C \uB05D)"
+          }
+        )
+      ] }) : /* @__PURE__ */ jsxs12("div", { className: "space-y-3", children: [
+        /* @__PURE__ */ jsx13(
+          Button_default,
+          {
+            onClick: () => handleNavigate(currentScene.nextSceneId),
+            variant: "primary",
+            className: "w-full py-3",
+            children: currentScene.nextSceneId ? "\uB2E4\uC74C" : isCombatScene ? "\uC2B9\uB9AC (\uB2E4\uC74C)" : "\uACC4\uC18D (\uACBD\uB85C \uB05D)"
+          }
+        ),
+        isCombatScene && /* @__PURE__ */ jsx13(
+          Button_default,
+          {
+            onClick: handleDefeat,
+            variant: "danger",
+            className: "w-full py-3",
+            children: "\uD328\uBC30 (\uB9C8\uC744 \uADC0\uD658)"
+          }
+        )
+      ] }) })
+    ] });
+  };
+  return /* @__PURE__ */ jsx13(Modal_default, { isOpen, onClose, title: `\uC2A4\uD14C\uC774\uC9C0 \uD50C\uB808\uC774: ${currentStage?.title || "\uB85C\uB529 \uC911..."}`, size: "xl", children: /* @__PURE__ */ jsxs12("div", { className: "min-h-[60vh] max-h-[80vh] flex flex-col", children: [
+    /* @__PURE__ */ jsx13("div", { className: "flex-grow overflow-y-auto p-1", children: renderSceneContent() }),
+    !isOfferingRegularCombatRepeat && currentScene && // Only show global close if not in repeat offer and there's a current scene
+    /* @__PURE__ */ jsx13("div", { className: "pt-4 mt-auto border-t border-gray-700", children: /* @__PURE__ */ jsx13(Button_default, { onClick: onClose, variant: "danger", className: "w-full", children: "\uD50C\uB808\uC774\uD14C\uC2A4\uD2B8 \uC885\uB8CC" }) })
+  ] }) });
+};
+var ScriptPlayerModal_default = ScriptPlayerModal;
+
+// services/localStorageService.ts
+var LOCAL_STORAGE_KEY = "jrpgProject";
+var saveProjectToLocalStorage = (project) => {
+  try {
+    const serializedProject = JSON.stringify(project);
+    localStorage.setItem(LOCAL_STORAGE_KEY, serializedProject);
+  } catch (error) {
+    console.error("Error saving project to local storage:", error);
+  }
+};
+var loadProjectFromLocalStorage = () => {
+  try {
+    const serializedProject = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (serializedProject === null) {
+      return null;
+    }
+    return JSON.parse(serializedProject);
+  } catch (error) {
+    console.error("Error loading project from local storage:", error);
+    return null;
+  }
+};
+
+// App.tsx
+import { jsx as jsx14, jsxs as jsxs13 } from "react/jsx-runtime";
+var App = () => {
+  const [project, setProject] = useState8(loadProjectFromLocalStorage() || initialProject);
+  const [selectedStageId, setSelectedStageId] = useState8(null);
+  const [selectedSceneId, setSelectedSceneId] = useState8(null);
+  const [isCharacterManagerOpen, setIsCharacterManagerOpen] = useState8(false);
+  const [isLoading, setIsLoading] = useState8(false);
+  const [error, setError] = useState8(null);
+  const [editorSelection, setEditorSelection] = useState8({ type: null, id: null });
+  const fileInputRef = useRef(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState8(false);
+  const [playtestStageId, setPlaytestStageId] = useState8(null);
+  const [userInputApiKey, setUserInputApiKey] = useState8(getEffectiveApiKey() !== PLACEHOLDER_API_KEY ? getEffectiveApiKey() : "");
+  const [confirmModalState, setConfirmModalState] = useState8(null);
+  const handleSaveApiKey = () => {
+    if (userInputApiKey.trim()) {
+      saveUserApiKey(userInputApiKey.trim());
+      alert("API \uD0A4\uAC00 \uB85C\uCEEC \uC2A4\uD1A0\uB9AC\uC9C0\uC5D0 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uC81C AI \uAE30\uB2A5\uC744 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
+    } else {
+      saveUserApiKey("");
+      alert("API \uD0A4\uAC00 \uB85C\uCEEC \uC2A4\uD1A0\uB9AC\uC9C0\uC5D0\uC11C \uC81C\uAC70\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD658\uACBD \uBCC0\uC218 \uD0A4\uAC00 \uC0AC\uC6A9\uB418\uAC70\uB098, \uD0A4\uB97C \uB2E4\uC2DC \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+    }
+    setUserInputApiKey(getEffectiveApiKey() !== PLACEHOLDER_API_KEY ? getEffectiveApiKey() : "");
+  };
+  useEffect5(() => {
+    saveProjectToLocalStorage(project);
+  }, [project]);
+  const handleSetWorldSettings = useCallback2((settings) => {
+    setProject((prev) => ({ ...prev, worldSettings: settings }));
+    setEditorSelection({ type: null, id: null });
+  }, []);
+  const handleAddStage = useCallback2((stage) => {
+    setProject((prev) => ({ ...prev, stages: [...prev.stages, stage] }));
+  }, []);
+  const handleUpdateStage = useCallback2((updatedStage) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map((s) => s.id === updatedStage.id ? updatedStage : s)
+    }));
+  }, []);
+  const handleDeleteStage = useCallback2((stageId) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.filter((s) => s.id !== stageId)
+    }));
+    if (selectedStageId === stageId) {
+      setSelectedStageId(null);
+      setSelectedSceneId(null);
+      setEditorSelection({ type: null, id: null });
+    }
+    if (playtestStageId === stageId) {
+      setIsPlayerOpen(false);
+      setPlaytestStageId(null);
+    }
+  }, [selectedStageId, playtestStageId]);
+  const handleAddScene = useCallback2((stageId, scene) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map(
+        (s) => s.id === stageId ? { ...s, scenes: [...s.scenes, scene] } : s
+      )
+    }));
+  }, []);
+  const handleUpdateScene = useCallback2((stageId, updatedScene) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map(
+        (s) => s.id === stageId ? { ...s, scenes: s.scenes.map((sc) => sc.id === updatedScene.id ? updatedScene : sc) } : s
+      )
+    }));
+  }, []);
+  const handleDeleteScene = useCallback2((stageId, sceneId) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map(
+        (s) => s.id === stageId ? { ...s, scenes: s.scenes.filter((sc) => sc.id !== sceneId) } : s
+      )
+    }));
+    if (editorSelection.type === "scene" && editorSelection.id === sceneId) {
+      setSelectedSceneId(null);
+      if (selectedStageId) {
+        setEditorSelection({ type: "stage", id: selectedStageId });
+      } else {
+        setEditorSelection({ type: null, id: null });
+      }
+    }
+  }, [editorSelection, selectedStageId]);
+  const handleSelectStage = useCallback2((stageId) => {
+    setSelectedStageId(stageId);
+    setSelectedSceneId(null);
+    if (stageId) {
+      setEditorSelection({ type: "stage", id: stageId });
+    } else {
+      setEditorSelection({ type: null, id: null });
+    }
+  }, []);
+  const handleSelectScene = useCallback2((sceneId) => {
+    setSelectedSceneId(sceneId);
+    if (sceneId) {
+      setEditorSelection({ type: "scene", id: sceneId });
+    } else if (selectedStageId) {
+      setEditorSelection({ type: "stage", id: selectedStageId });
+    } else {
+      setEditorSelection({ type: null, id: null });
+    }
+  }, [selectedStageId]);
+  const handleManageCharacters = useCallback2((stageId) => {
+    setIsCharacterManagerOpen(true);
+  }, []);
+  const handleUpdateStageCharacters = useCallback2((stageId, characters) => {
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map((s) => s.id === stageId ? { ...s, characters } : s)
+    }));
+  }, []);
+  const handleAddCompleteSceneObject = useCallback2((newScene) => {
+    if (!newScene.stageId) {
+      console.error("Error: Scene object provided to handleAddCompleteSceneObject is missing stageId.", newScene);
+      setError("\uC0DD\uC131\uB41C \uC7A5\uBA74\uC744 \uCD94\uAC00\uD558\uB294 \uC911 \uC624\uB958 \uBC1C\uC0DD: \uC2A4\uD14C\uC774\uC9C0 ID\uAC00 \uB204\uB77D\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      return;
+    }
+    setProject((prev) => ({
+      ...prev,
+      stages: prev.stages.map(
+        (s) => s.id === newScene.stageId ? { ...s, scenes: [...s.scenes, newScene] } : s
+      )
+    }));
+    handleSelectScene(newScene.id);
+  }, [handleSelectScene]);
+  const handleAddFullGeneratedStage = useCallback2((data) => {
+    const newStageId = generateId();
+    const finalScenes = data.scenes.map((scene) => ({
+      ...scene,
+      stageId: newStageId
+    }));
+    const newStage = {
+      id: newStageId,
+      title: data.stageDetails.title,
+      settingDescription: data.stageDetails.settingDescription,
+      characters: data.characters,
+      scenes: finalScenes
+    };
+    setProject((prev) => ({
+      ...prev,
+      stages: [...prev.stages, newStage]
+    }));
+    handleSelectStage(newStageId);
+  }, [handleSelectStage]);
+  const selectedStage = project.stages.find((s) => s.id === selectedStageId);
+  const selectedScene = selectedStage?.scenes.find((s) => s.id === selectedSceneId);
+  const clearProject = () => {
+    const doClear = () => {
+      setProject(initialProject);
+      setSelectedStageId(null);
+      setSelectedSceneId(null);
+      setEditorSelection({ type: null, id: null });
+      setIsPlayerOpen(false);
+      setPlaytestStageId(null);
+    };
+    setConfirmModalState({
+      isOpen: true,
+      title: "\uC0C8 \uD504\uB85C\uC81D\uD2B8",
+      message: "\uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uC2DC\uC791\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C? \uC800\uC7A5\uB418\uC9C0 \uC54A\uC740 \uBAA8\uB4E0 \uBCC0\uACBD \uC0AC\uD56D\uC774 \uC190\uC2E4\uB429\uB2C8\uB2E4.",
+      onConfirm: doClear,
+      confirmText: "\uC0C8\uB85C \uB9CC\uB4E4\uAE30",
+      cancelText: "\uCDE8\uC18C",
+      confirmButtonVariant: "danger"
+    });
+  };
+  const handleExportProject = () => {
+    try {
+      const projectJson = JSON.stringify(project, null, 2);
+      const blob = new Blob([projectJson], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${project.worldSettings?.title || "RPG"}-\uD504\uB85C\uC81D\uD2B8.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setError(null);
+    } catch (e) {
+      console.error("\uD504\uB85C\uC81D\uD2B8 \uB0B4\uBCF4\uB0B4\uAE30 \uC2E4\uD328:", e);
+      setError("\uD504\uB85C\uC81D\uD2B8 \uB0B4\uBCF4\uB0B4\uAE30\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  };
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+  const handleFileImport = (event) => {
+    const file = event.target.files?.[0];
+    const currentFileInput = event.target;
+    if (!file) {
+      if (currentFileInput) currentFileInput.value = "";
+      return;
+    }
+    const proceedWithImport = (selectedFile) => {
+      setIsLoading(true);
+      setError(null);
+      const reader = new FileReader();
+      reader.onload = (e_reader) => {
+        try {
+          const text = e_reader.target?.result;
+          const importedProject = JSON.parse(text);
+          if (importedProject && typeof importedProject.worldSettings !== "undefined" && Array.isArray(importedProject.stages)) {
+            setProject(importedProject);
+            if (importedProject.stages.length > 0) {
+              const firstStage = importedProject.stages[0];
+              setSelectedStageId(firstStage.id);
+              if (firstStage.scenes.length > 0) {
+                const firstSceneId = firstStage.scenes[0].id;
+                setSelectedSceneId(firstSceneId);
+                setEditorSelection({ type: "scene", id: firstSceneId });
+              } else {
+                setSelectedSceneId(null);
+                setEditorSelection({ type: "stage", id: firstStage.id });
+              }
+            } else {
+              setSelectedStageId(null);
+              setSelectedSceneId(null);
+              setEditorSelection({ type: null, id: null });
+            }
+            setIsPlayerOpen(false);
+            setPlaytestStageId(null);
+            alert("\uD504\uB85C\uC81D\uD2B8\uB97C \uC131\uACF5\uC801\uC73C\uB85C \uAC00\uC838\uC654\uC2B5\uB2C8\uB2E4!");
+          } else {
+            throw new Error("\uAC00\uC838\uC628 \uD30C\uC77C\uC758 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. 'worldSettings'\uC640 'stages' \uC18D\uC131\uC744 \uD3EC\uD568\uD574\uC57C \uD569\uB2C8\uB2E4.");
+          }
+        } catch (err) {
+          console.error("\uD504\uB85C\uC81D\uD2B8 \uAC00\uC838\uC624\uAE30 \uC2E4\uD328:", err);
+          setError(`\uD504\uB85C\uC81D\uD2B8 \uAC00\uC838\uC624\uAE30 \uC2E4\uD328: ${err.message}`);
+        } finally {
+          setIsLoading(false);
+          if (currentFileInput) currentFileInput.value = "";
+        }
+      };
+      reader.onerror = () => {
+        setError("\uD30C\uC77C \uC77D\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+        setIsLoading(false);
+        if (currentFileInput) currentFileInput.value = "";
+      };
+      reader.readAsText(selectedFile);
+    };
+    setConfirmModalState({
+      isOpen: true,
+      title: "\uD504\uB85C\uC81D\uD2B8 \uAC00\uC838\uC624\uAE30",
+      message: "\uD504\uB85C\uC81D\uD2B8\uB97C \uAC00\uC838\uC624\uC2DC\uACA0\uC2B5\uB2C8\uAE4C? \uD604\uC7AC \uC791\uC5C5 \uB0B4\uC6A9\uC740 \uB36E\uC5B4\uC4F0\uC5EC\uC9D1\uB2C8\uB2E4. \uACC4\uC18D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?",
+      onConfirm: () => {
+        proceedWithImport(file);
+      },
+      onCancel: () => {
+        if (currentFileInput) currentFileInput.value = "";
+      },
+      confirmText: "\uAC00\uC838\uC624\uAE30",
+      cancelText: "\uCDE8\uC18C",
+      confirmButtonVariant: "primary"
+    });
+  };
+  const handleOpenPlayer = useCallback2((stageId) => {
+    const stageToPlay = project.stages.find((s) => s.id === stageId);
+    if (stageToPlay && stageToPlay.scenes.length > 0) {
+      setPlaytestStageId(stageId);
+      setIsPlayerOpen(true);
+      setError(null);
+    } else if (stageToPlay && stageToPlay.scenes.length === 0) {
+      setError("\uC774 \uC2A4\uD14C\uC774\uC9C0\uC5D0\uB294 \uD50C\uB808\uC774\uD560 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 \uC7A5\uBA74\uC744 \uCD94\uAC00\uD574\uC8FC\uC138\uC694.");
+    } else {
+      setError("\uD50C\uB808\uC774\uD560 \uC2A4\uD14C\uC774\uC9C0\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    }
+  }, [project.stages]);
+  const handleClosePlayer = useCallback2(() => {
+    setIsPlayerOpen(false);
+    setPlaytestStageId(null);
+  }, []);
+  return /* @__PURE__ */ jsxs13("div", { className: "flex flex-col h-screen bg-gray-900 text-gray-100 pb-14", children: [
+    /* @__PURE__ */ jsxs13("header", { className: "bg-gray-800 p-4 shadow-md flex justify-between items-center", children: [
+      /* @__PURE__ */ jsxs13("h1", { className: "text-2xl font-bold text-purple-400 flex items-center", children: [
+        /* @__PURE__ */ jsx14(AISparklesIcon, { className: "w-8 h-8 mr-2 text-purple-500" }),
+        " RPG \uC2A4\uD06C\uB9BD\uD2B8 \uD3B8\uC9D1\uAE30"
+      ] }),
+      /* @__PURE__ */ jsxs13("div", { className: "flex items-center space-x-2", children: [
+        /* @__PURE__ */ jsxs13(
+          Button_default,
+          {
+            onClick: clearProject,
+            variant: "danger",
+            className: "text-white font-semibold py-2 px-3 sm:px-4 rounded shadow flex items-center text-sm sm:text-base",
+            title: "\uC0C8 \uD504\uB85C\uC81D\uD2B8",
+            children: [
+              /* @__PURE__ */ jsx14(FolderOpenIcon, { className: "w-5 h-5 mr-1 sm:mr-2" }),
+              " ",
+              /* @__PURE__ */ jsx14("span", { className: "hidden sm:inline", children: "\uC0C8\uB85C \uB9CC\uB4E4\uAE30" })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsx14(
+          "input",
+          {
+            type: "file",
+            ref: fileInputRef,
+            onChange: handleFileImport,
+            accept: ".json",
+            className: "hidden"
+          }
+        ),
+        /* @__PURE__ */ jsxs13(
+          Button_default,
+          {
+            onClick: handleImportClick,
+            variant: "primary",
+            className: "bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 sm:px-4 rounded shadow flex items-center text-sm sm:text-base",
+            title: "\uD504\uB85C\uC81D\uD2B8 \uAC00\uC838\uC624\uAE30",
+            children: [
+              /* @__PURE__ */ jsx14(UploadIcon, { className: "w-5 h-5 mr-1 sm:mr-2" }),
+              " ",
+              /* @__PURE__ */ jsx14("span", { className: "hidden sm:inline", children: "\uAC00\uC838\uC624\uAE30" })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxs13(
+          Button_default,
+          {
+            onClick: handleExportProject,
+            variant: "success",
+            className: "bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 sm:px-4 rounded shadow flex items-center text-sm sm:text-base",
+            title: "\uD504\uB85C\uC81D\uD2B8 \uB0B4\uBCF4\uB0B4\uAE30",
+            children: [
+              /* @__PURE__ */ jsx14(DownloadIcon, { className: "w-5 h-5 mr-1 sm:mr-2" }),
+              " ",
+              /* @__PURE__ */ jsx14("span", { className: "hidden sm:inline", children: "\uB0B4\uBCF4\uB0B4\uAE30" })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    error && /* @__PURE__ */ jsxs13("div", { className: "bg-red-500 text-white p-3 text-center", children: [
+      "\uC624\uB958: ",
+      error,
+      " ",
+      /* @__PURE__ */ jsx14("button", { onClick: () => setError(null), className: "ml-4 font-bold", children: "X" })
+    ] }),
+    isLoading && /* @__PURE__ */ jsx14("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50", children: /* @__PURE__ */ jsxs13("div", { className: "bg-gray-700 p-6 rounded-lg shadow-xl flex items-center space-x-4", children: [
+      /* @__PURE__ */ jsx14("div", { className: "animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-purple-500" }),
+      /* @__PURE__ */ jsx14("span", { className: "text-xl font-semibold text-gray-100", children: "\uCC98\uB9AC \uC911\uC785\uB2C8\uB2E4..." })
+    ] }) }),
+    /* @__PURE__ */ jsxs13("div", { className: "flex flex-1 overflow-hidden", children: [
+      /* @__PURE__ */ jsxs13("div", { className: "w-1/4 min-w-[300px] max-w-[400px] bg-gray-800 p-4 overflow-y-auto shadow-lg", children: [
+        /* @__PURE__ */ jsx14(
+          WorldSettingsPanel_default,
+          {
+            worldSettings: project.worldSettings || initialWorldSettings,
+            onSetWorldSettings: handleSetWorldSettings,
+            onSelect: () => setEditorSelection({ type: "world", id: "world_settings" }),
+            isSelected: editorSelection.type === "world",
+            setIsLoading,
+            setError
+          }
+        ),
+        /* @__PURE__ */ jsx14(
+          StageListPanel_default,
+          {
+            stages: project.stages,
+            selectedStageId,
+            onSelectStage: handleSelectStage,
+            onAddStage: (stageTitle) => {
+              const newStage = {
+                id: generateId(),
+                title: stageTitle,
+                settingDescription: "\uC0C8\uB86D\uACE0 \uC2E0\uBE44\uD55C \uC2A4\uD14C\uC774\uC9C0\uAC00 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4...",
+                scenes: [],
+                characters: []
+              };
+              handleAddStage(newStage);
+              handleSelectStage(newStage.id);
+            },
+            onDeleteStage: handleDeleteStage,
+            worldSettings: project.worldSettings,
+            onUpdateStages: (updatedStages) => setProject((prev) => ({ ...prev, stages: updatedStages })),
+            onAddFullGeneratedStage: handleAddFullGeneratedStage,
+            onPlayStage: handleOpenPlayer,
+            setIsLoading,
+            setError
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsx14("div", { className: "flex-1 bg-gray-700 p-6 overflow-y-auto", children: selectedStage ? /* @__PURE__ */ jsx14(
+        StageEditorPanel_default,
+        {
+          stage: selectedStage,
+          onSelectScene: handleSelectScene,
+          selectedSceneId,
+          onAddScene: (type) => {
+            const newScene = {
+              id: generateId(),
+              stageId: selectedStage.id,
+              type,
+              title: `\uC0C8 ${type} \uC7A5\uBA74`,
+              content: "",
+              characterIds: [],
+              choices: type === "\uC120\uD0DD" /* CHOICE */ ? [{ id: generateId(), text: "\uC120\uD0DD 1", nextSceneId: null }] : void 0,
+              combatDetails: type === "\uC77C\uBC18 \uC804\uD22C" /* REGULAR_COMBAT */ || type === "\uBCF4\uC2A4 \uC804\uD22C" /* BOSS_COMBAT */ ? { enemyCharacterIds: [], reward: "" } : void 0,
+              item: type === "\uC544\uC774\uD15C \uD68D\uB4DD" /* ITEM_ACQUISITION */ ? "" : void 0,
+              newLocationName: type === "\uC7A5\uC18C \uBCC0\uACBD" /* LOCATION_CHANGE */ ? "" : void 0,
+              nextSceneId: null
+            };
+            handleAddScene(selectedStage.id, newScene);
+            handleSelectScene(newScene.id);
+          },
+          onUpdateFullScene: handleAddCompleteSceneObject,
+          onDeleteScene: (sceneId) => handleDeleteScene(selectedStage.id, sceneId),
+          onManageCharacters: () => handleManageCharacters(selectedStage.id),
+          worldSettings: project.worldSettings,
+          onUpdateScene: (scene) => handleUpdateScene(selectedStage.id, scene),
+          setIsLoading,
+          setError
+        }
+      ) : /* @__PURE__ */ jsxs13("div", { className: "flex flex-col items-center justify-center h-full text-gray-500", children: [
+        /* @__PURE__ */ jsx14(AISparklesIcon, { className: "w-24 h-24 mb-4 opacity-50" }),
+        /* @__PURE__ */ jsx14("p", { className: "text-xl", children: "\uD3B8\uC9D1\uC744 \uC2DC\uC791\uD560 \uC2A4\uD14C\uC774\uC9C0\uB97C \uC120\uD0DD\uD558\uAC70\uB098 \uC0C8\uB85C \uB9CC\uB4DC\uC138\uC694." }),
+        /* @__PURE__ */ jsx14("p", { children: "AI \uC0DD\uC131 \uAE30\uB2A5\uC744 \uC0AC\uC6A9\uD558\uB824\uBA74 \uC67C\uCABD\uC5D0\uC11C \uC138\uACC4\uAD00 \uC124\uC815\uC744 \uC815\uC758\uD558\uC138\uC694." }),
+        !isApiKeyEffectivelyConfigured() && /* @__PURE__ */ jsx14("p", { className: "mt-2 text-yellow-400", children: "AI \uAE30\uB2A5\uC744 \uC0AC\uC6A9\uD558\uB824\uBA74 \uD558\uB2E8 \uBC14\uC5D0 Gemini API \uD0A4\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694." })
+      ] }) }),
+      /* @__PURE__ */ jsxs13("div", { className: "w-1/3 min-w-[350px] max-w-[500px] bg-gray-800 p-4 overflow-y-auto shadow-lg", children: [
+        editorSelection.type === "scene" && selectedScene && selectedStage && /* @__PURE__ */ jsx14(
+          SceneEditorPanel_default,
+          {
+            scene: selectedScene,
+            stage: selectedStage,
+            allScenesInStage: selectedStage.scenes,
+            onUpdateScene: (updatedScene) => handleUpdateScene(selectedStage.id, updatedScene),
+            worldSettings: project.worldSettings,
+            setIsLoading,
+            setError
+          }
+        ),
+        editorSelection.type === "stage" && selectedStage && /* @__PURE__ */ jsxs13("div", { className: "p-4 bg-gray-700 rounded-lg", children: [
+          /* @__PURE__ */ jsx14("h3", { className: "text-xl font-semibold mb-3 text-purple-400", children: "\uC2A4\uD14C\uC774\uC9C0 \uC0C1\uC138\uC815\uBCF4" }),
+          /* @__PURE__ */ jsx14("label", { htmlFor: "stageTitle", className: "block text-sm font-medium text-gray-300 mb-1", children: "\uC2A4\uD14C\uC774\uC9C0 \uC81C\uBAA9" }),
+          /* @__PURE__ */ jsx14(
+            "input",
+            {
+              id: "stageTitle",
+              type: "text",
+              value: selectedStage.title,
+              onChange: (e) => handleUpdateStage({ ...selectedStage, title: e.target.value }),
+              className: "w-full p-2 bg-gray-600 border border-gray-500 rounded focus:ring-purple-500 focus:border-purple-500"
+            }
+          ),
+          /* @__PURE__ */ jsx14("label", { htmlFor: "stageDescription", className: "block text-sm font-medium text-gray-300 mt-3 mb-1", children: "\uBC30\uACBD \uC124\uBA85" }),
+          /* @__PURE__ */ jsx14(
+            "textarea",
+            {
+              id: "stageDescription",
+              value: selectedStage.settingDescription,
+              onChange: (e) => handleUpdateStage({ ...selectedStage, settingDescription: e.target.value }),
+              rows: 4,
+              className: "w-full p-2 bg-gray-600 border border-gray-500 rounded focus:ring-purple-500 focus:border-purple-500"
+            }
+          )
+        ] }),
+        editorSelection.type === null && editorSelection.id !== "world_settings" && /* @__PURE__ */ jsxs13("div", { className: "flex flex-col items-center justify-center h-full text-gray-500", children: [
+          /* @__PURE__ */ jsx14(AISparklesIcon, { className: "w-16 h-16 mb-4 opacity-30" }),
+          /* @__PURE__ */ jsx14("p", { className: "text-center", children: "\uC67C\uCABD \uB610\uB294 \uC911\uC559 \uD328\uB110\uC5D0\uC11C \uD56D\uBAA9\uC744 \uC120\uD0DD\uD558\uC5EC \uC5EC\uAE30\uC5D0\uC11C \uC0C1\uC138\uC815\uBCF4\uB97C \uD3B8\uC9D1\uD558\uC138\uC694." })
+        ] })
+      ] })
+    ] }),
+    isCharacterManagerOpen && selectedStage && /* @__PURE__ */ jsx14(
+      CharacterManagerModal_default,
+      {
+        isOpen: isCharacterManagerOpen,
+        onClose: () => setIsCharacterManagerOpen(false),
+        stage: selectedStage,
+        onUpdateCharacters: (characters) => handleUpdateStageCharacters(selectedStage.id, characters),
+        worldSettings: project.worldSettings,
+        setIsLoading,
+        setError
+      }
+    ),
+    isPlayerOpen && project && /* @__PURE__ */ jsx14(
+      ScriptPlayerModal_default,
+      {
+        isOpen: isPlayerOpen,
+        onClose: handleClosePlayer,
+        project,
+        startStageId: playtestStageId
+      }
+    ),
+    confirmModalState && confirmModalState.isOpen && /* @__PURE__ */ jsxs13(
+      Modal_default,
+      {
+        isOpen: confirmModalState.isOpen,
+        onClose: () => {
+          if (confirmModalState.onCancel) confirmModalState.onCancel();
+          setConfirmModalState(null);
+        },
+        title: confirmModalState.title,
+        size: "sm",
+        children: [
+          /* @__PURE__ */ jsx14("p", { className: "text-gray-300 mb-6", children: confirmModalState.message }),
+          /* @__PURE__ */ jsxs13("div", { className: "flex justify-end space-x-3", children: [
+            /* @__PURE__ */ jsx14(
+              Button_default,
+              {
+                variant: "secondary",
+                onClick: () => {
+                  if (confirmModalState.onCancel) confirmModalState.onCancel();
+                  setConfirmModalState(null);
+                },
+                children: confirmModalState.cancelText || "\uCDE8\uC18C"
+              }
+            ),
+            /* @__PURE__ */ jsx14(
+              Button_default,
+              {
+                variant: confirmModalState.confirmButtonVariant || "primary",
+                onClick: () => {
+                  confirmModalState.onConfirm();
+                  setConfirmModalState(null);
+                },
+                children: confirmModalState.confirmText || "\uD655\uC778"
+              }
+            )
+          ] })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsx14("div", { className: "fixed bottom-0 left-0 right-0 bg-yellow-500 p-2 shadow-lg border-t-2 border-yellow-700 z-50 text-black", children: /* @__PURE__ */ jsxs13("div", { className: "max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between sm:space-x-4 text-xs", children: [
+      /* @__PURE__ */ jsxs13("div", { className: "flex items-center space-x-2 mb-1 sm:mb-0", children: [
+        /* @__PURE__ */ jsx14("label", { htmlFor: "apiKeyInputBottom", className: "font-semibold whitespace-nowrap", children: "Gemini API \uD0A4:" }),
+        /* @__PURE__ */ jsx14(
+          "input",
+          {
+            id: "apiKeyInputBottom",
+            type: "password",
+            value: userInputApiKey,
+            onChange: (e) => setUserInputApiKey(e.target.value),
+            className: "p-1 rounded bg-gray-100 text-gray-800 w-40 sm:w-56 md:w-64 border border-yellow-700 focus:ring-purple-500 focus:border-purple-500",
+            placeholder: "API \uD0A4 \uC785\uB825",
+            "aria-label": "Gemini API Key Input"
+          }
+        ),
+        /* @__PURE__ */ jsx14(Button_default, { onClick: handleSaveApiKey, variant: "secondary", size: "sm", className: "bg-purple-600 hover:bg-purple-700 text-white !px-2.5 !py-1 !text-xs", children: "\uC800\uC7A5" })
+      ] }),
+      /* @__PURE__ */ jsx14("p", { className: "text-yellow-900 text-center sm:text-right", children: process.env.API_KEY && process.env.API_KEY !== PLACEHOLDER_API_KEY && process.env.API_KEY.trim() !== "" ? `\uD658\uACBD \uBCC0\uC218 \uD0A4\uAC00 \uB85C\uCEEC \uC800\uC7A5 \uD0A4\uBCF4\uB2E4 \uC6B0\uC120 \uC801\uC6A9\uB429\uB2C8\uB2E4.` : getEffectiveApiKey() !== PLACEHOLDER_API_KEY && getEffectiveApiKey() === localStorage.getItem(USER_API_KEY_LOCAL_STORAGE_KEY) ? `\uB85C\uCEEC \uC800\uC7A5 \uD0A4 \uC0AC\uC6A9 \uC911\uC785\uB2C8\uB2E4.` : `API \uD0A4\uB97C \uC785\uB825/\uC800\uC7A5\uD558\uC138\uC694. (\uD658\uACBD \uBCC0\uC218 \uC6B0\uC120)` })
+    ] }) })
+  ] });
+};
+var App_default = App;
+
+// index.tsx
+import { jsx as jsx15 } from "react/jsx-runtime";
+var rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+var root = ReactDOM.createRoot(rootElement);
+root.render(
+  /* @__PURE__ */ jsx15(React9.StrictMode, { children: /* @__PURE__ */ jsx15(App_default, {}) })
+);
+
+  </script>
 </body>
 </html>
